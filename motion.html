@@ -1,0 +1,700 @@
+<title>フィルタひとつで動きが変わる — CG実演デモ(時間)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11px; font-weight:500; color:var(--sub); letter-spacing:.04em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+  .panel-head .dot.c{background:var(--cyan)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+
+  #graph{display:block; width:100%; height:190px}
+
+  /* 数式パネル:ステージごとに式が1行ずつ積み上がる */
+  #math{padding:8px 0; display:flex; flex-direction:column}
+  .mrow{display:flex; align-items:baseline; gap:12px; padding:6px 16px; flex-wrap:wrap}
+  .mrow .chip{flex:none; width:11em; font-size:12.5px; color:var(--sub)}
+  .mrow .mf{
+    font-family:"STIX Two Math","Cambria Math",Georgia,"Times New Roman",serif;
+    font-size:17.5px; letter-spacing:.02em; white-space:nowrap;
+  }
+  .mrow .mf .note{font-size:12.5px; color:var(--sub); font-family:inherit; margin-left:.6em}
+  .mrow.cur{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber); animation:pulse .9s ease-out 2}
+  .mrow.cur .chip{color:var(--amber); font-weight:600}
+  @media (prefers-reduced-motion:reduce){ .mrow.cur{animation:none} }
+  .legend{
+    display:flex; gap:18px; padding:6px 14px 10px; font-size:12.5px; color:var(--sub);
+  }
+  .legend .sw{display:inline-block; width:22px; height:0; vertical-align:middle; margin-right:6px;
+    border-top:3px solid var(--amber); border-radius:2px}
+  .legend .sw.dash{border-top:2px dashed var(--cyan)}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+</style>
+
+<header>
+  <h1>フィルタひとつで動きが変わる<small>コンピュータグラフィックス 実演 — 時間 / “The Cartoon Animation Filter” (Wang, Drucker, Agrawala, Cohen; SIGGRAPH 2006)</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>6</kbd> / <kbd>←</kbd><kbd>→</kbd> 切替 <kbd>Space</kbd> 再生/停止</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>数式 — 式がどう育つか</div>
+      <div id="math"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>動きのコントロール</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <button class="btn" id="play-btn">⏸ 一時停止(Space)</button>
+          <button class="btn" id="restart-btn">↺ 最初から(R)</button>
+          <button class="btn" id="slow-btn">🐢 スロー(0.4×)</button>
+        </div>
+        <div class="ctl-row hidden" id="k-row">
+          <label for="sk">誇張の強さ k</label>
+          <input type="range" id="sk" min="0" max="3" step="0.1" value="1.5">
+          <output id="ok">1.50</output>
+        </div>
+        <div class="ctl-row hidden" id="koma-row">
+          <label>コマ打ち</label>
+          <button class="btn koma active" data-koma="1">1コマ(24枚/秒)</button>
+          <button class="btn koma" data-koma="2">2コマ(12枚/秒)</button>
+          <button class="btn koma" data-koma="3">3コマ(8枚/秒)</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dot c"></span>y(t) のグラフ(高さの時間変化)</div>
+      <canvas id="graph"></canvas>
+      <div class="legend">
+        <span><span class="sw"></span>表示中の動き</span>
+        <span id="legend-phys" class="hidden"><span class="sw dash"></span>物理のまま</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — 動きを作ってから、加工する
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = {
+  stage: 1,
+  k: 1.5,          // 誇張の強さ
+  koma: 1,         // コマ打ち(1=24枚/秒, 2=12, 3=8)
+  playing: true,
+  slow: false,     // スロー再生(0.4×)
+  fontIdx: 1,
+};
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 等速直線運動', note:'速度が一定のまま、床まで進む。y-t グラフは直線。……でも、落ちるものはこう動きませんよね。ふわふわして見える——目は物理法則を知っている。' },
+  { label:'② 等加速度直線運動', note:'重力で、速度が一定の割合で増える。グラフは放物線になり、見慣れた「落ち方」になった。でも着地で、ぺたっと止まる。' },
+  { label:'③ 跳ね返り', note:'反発係数 e = 0.62 で跳ね返る。高校物理としては、これで完成。でも、アニメとしては……硬くないですか? ここからの違和感は「間違い」ではなく「表現」の側。' },
+  { label:'④ 誇張フィルタ', note:'床に当たる瞬間、速度が一気に反転する = 一瞬だけ巨大な加速度が立つ(グラフの緑の山)。それをならして位置から引くと、大きな力の瞬間だけが誇張される——予備動作と余韻の正体。録画済みの動き全体にかける(未来を知る必要がある)。' },
+  { label:'⑤ つぶしと伸ばし', note:'やわらかい物は急に止まれない(慣性)。④で床にめり込んだ分を「つぶれ」に、速さを「伸び」に変換する。体積は保つ(横 × 縦 = 1)。' },
+  { label:'⑥ コマ打ち', note:'1秒24コマを、同じ絵を2コマ・3コマずつ使って刻み直す。3コマ打ち = 実質8枚/秒——テレビアニメの伝統のリズム。動きは同じでも、時間の刻み方で印象が変わる。' },
+];
+
+/* ---------- 物理シミュレーション(全時刻を先に作る) ---------- */
+const SIM = 240;                 // 1秒あたりのサンプル数
+const T = 3.6;                   // ループの長さ(秒)
+const N = Math.floor(T * SIM);
+const GRV = 6.0, R = 0.13, H0 = 1.5, REST = 0.62, T_REL = 0.5;
+const SIG = 0.12;                // ならしの幅(秒)。広いほど予備動作・余韻が大きく出る
+
+// 3種類の運動を先に全部作っておく(①等速 ②等加速度 ③跳ね返りあり)
+function simulate(mode) {
+  const arr = new Float64Array(N);
+  let y = H0, v = (mode === 1 ? -1.2 : 0), resting = false;
+  for (let i = 0; i < N; i++) {
+    const t = i / SIM;
+    if (t > T_REL && !resting) {
+      if (mode >= 2) v -= GRV / SIM;
+      y += v / SIM;
+      if (y < R) {
+        if (mode === 3) {
+          y = R; v = -v * REST;
+          if (Math.abs(v) < 0.18) { v = 0; resting = true; }
+        } else {
+          y = R; v = 0; resting = true;
+        }
+      }
+    }
+    arr[i] = y;
+  }
+  return arr;
+}
+const yConst = simulate(1), yGrav = simulate(2), yBounce = simulate(3);
+function currentPhys() {
+  return state.stage === 1 ? yConst : state.stage === 2 ? yGrav : yBounce;
+}
+
+/* ---------- アニメ化フィルタ:y* = y − k·σ²·(ぼかした y)″ ---------- */
+const yAnim = new Float64Array(N);
+const blur = new Float64Array(N);
+const exTerm = new Float64Array(N);   // 引いている量 = k·σ²·(ならした加速度)
+
+(function makeKernel() {
+  // ガウスぼかし(1回だけ計算しておく)
+  const rad = Math.round(3 * SIG * SIM);
+  const w = new Float64Array(2 * rad + 1);
+  let sum = 0;
+  for (let j = -rad; j <= rad; j++) {
+    w[j + rad] = Math.exp(-(j * j) / (2 * (SIG * SIM) ** 2));
+    sum += w[j + rad];
+  }
+  for (let j = 0; j < w.length; j++) w[j] /= sum;
+  window._gaussW = w; window._gaussR = rad;
+})();
+
+function recomputeFilter() {
+  const w = window._gaussW, rad = window._gaussR;
+  for (let i = 0; i < N; i++) {
+    let s = 0;
+    for (let j = -rad; j <= rad; j++) {
+      const idx = Math.min(N - 1, Math.max(0, i + j));
+      s += yBounce[idx] * w[j + rad];
+    }
+    blur[i] = s;
+  }
+  const k = state.k;
+  for (let i = 0; i < N; i++) {
+    const i0 = Math.max(0, i - 1), i1 = Math.min(N - 1, i + 1);
+    const acc = (blur[i0] - 2 * blur[i] + blur[i1]) * SIM * SIM;  // ならした動きの加速度
+    exTerm[i] = k * SIG * SIG * acc;
+    yAnim[i] = yBounce[i] - exTerm[i];
+  }
+}
+recomputeFilter();
+
+/* ---------- 再生時刻 ---------- */
+let phase = 0;                   // ループ内の経過秒
+let lastNow = null;
+
+function shownTime() {
+  // コマ打ち:表示時刻を 24/n コマに量子化
+  if (state.stage >= 6 && state.koma > 1) {
+    return Math.floor(phase * 24 / state.koma) * state.koma / 24;
+  }
+  return phase;
+}
+function idxAt(t) {
+  return Math.min(N - 2, Math.max(1, Math.round(t * SIM)));
+}
+
+/* ---------- 描画:ボール ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520;
+const SCALE = 210, GROUND_Y = 470, CX = RES / 2;   // 世界→画面
+const BALL = '#F2C89E', BALL_EDGE = '#3A4560';
+const VMAX = Math.sqrt(2 * GRV * (H0 - R));
+
+function ballShape(i) {
+  // その時刻の中心高さと、縦横の倍率を返す
+  const src = state.stage >= 4 ? yAnim : currentPhys();
+  let yc = src[i], sy = 1;
+  if (state.stage >= 5) {
+    if (yc < R) {                                   // 床にめり込んだ分だけ、つぶす
+      const pen = R - yc;
+      sy = Math.max(0.5, 1 - 0.9 * pen / R);
+      yc = R * sy;                                  // 底面を床に付ける
+    } else {                                        // 空中:速いほど縦に伸びる
+      const v = (src[i + 1] - src[i - 1]) * SIM / 2;
+      sy = 1 + 0.35 * Math.min(Math.abs(v) / VMAX, 1);
+    }
+  }
+  return { yc, sy, sx: 1 / sy };
+}
+
+function render() {
+  vctx.fillStyle = '#FFFFFF';
+  vctx.fillRect(0, 0, RES, RES);
+  // 床
+  vctx.strokeStyle = '#B9C2D0';
+  vctx.lineWidth = 2;
+  vctx.beginPath(); vctx.moveTo(24, GROUND_Y); vctx.lineTo(RES - 24, GROUND_Y); vctx.stroke();
+
+  const i = idxAt(shownTime());
+
+  // 物理のまま(ゴースト・④以降)
+  if (state.stage >= 4) {
+    vctx.strokeStyle = 'rgba(58,69,96,.4)';
+    vctx.setLineDash([5, 4]);
+    vctx.lineWidth = 2;
+    vctx.beginPath();
+    vctx.ellipse(CX, GROUND_Y - yBounce[i] * SCALE, R * SCALE, R * SCALE, 0, 0, Math.PI * 2);
+    vctx.stroke();
+    vctx.setLineDash([]);
+  }
+
+  // 表示中のボール
+  const { yc, sy, sx } = ballShape(i);
+  vctx.fillStyle = BALL;
+  vctx.strokeStyle = BALL_EDGE;
+  vctx.lineWidth = 2.5;
+  vctx.beginPath();
+  vctx.ellipse(CX, GROUND_Y - yc * SCALE, R * SCALE * sx, R * SCALE * sy, 0, 0, Math.PI * 2);
+  vctx.fill(); vctx.stroke();
+}
+
+/* ---------- 描画:y(t) グラフ ---------- */
+const graph = document.getElementById('graph');
+const gctx = graph.getContext('2d');
+
+function drawGraph() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = graph.clientWidth, H = graph.clientHeight;
+  if (graph.width !== W * dpr) { graph.width = W * dpr; graph.height = H * dpr; }
+  gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  gctx.clearRect(0, 0, W, H);
+
+  const padL = 34, padR = 14, padT = 12, padB = 24;
+  const gw = W - padL - padR, gh = H - padT - padB;
+  const X = t => padL + t / T * gw;
+  const Y = y => padT + (1 - y / 1.9) * gh;
+
+  // 目盛り
+  gctx.strokeStyle = '#26304A'; gctx.lineWidth = 1;
+  gctx.fillStyle = '#93A0B4'; gctx.font = '11px ui-monospace, Menlo, monospace';
+  gctx.textAlign = 'center';
+  for (let t = 0; t <= 3; t++) {
+    gctx.beginPath(); gctx.moveTo(X(t), padT); gctx.lineTo(X(t), padT + gh); gctx.stroke();
+    gctx.fillText(t + 's', X(t), H - 8);
+  }
+  // 床の高さ
+  gctx.strokeStyle = '#3B4970';
+  gctx.beginPath(); gctx.moveTo(padL, Y(R)); gctx.lineTo(W - padR, Y(R)); gctx.stroke();
+  gctx.textAlign = 'left';
+  gctx.fillText('床', padL + 4, Y(R) + 14);
+
+  // 物理のまま(点線・シアン)④以降
+  if (state.stage >= 4) {
+    gctx.strokeStyle = '#6CC6FF'; gctx.lineWidth = 1.6; gctx.setLineDash([5, 5]);
+    gctx.beginPath();
+    for (let i = 0; i < N; i += 2) {
+      const x = X(i / SIM), y = Y(yBounce[i]);
+      i === 0 ? gctx.moveTo(x, y) : gctx.lineTo(x, y);
+    }
+    gctx.stroke(); gctx.setLineDash([]);
+  }
+
+  // 引いている量 = ならした加速度(緑・④以降)。平坦な線に、手を離す瞬間と着地の瞬間だけ山が立つ
+  if (state.stage >= 4) {
+    const base = padT + 20, accScale = 65;
+    gctx.strokeStyle = 'rgba(70,217,154,.35)'; gctx.lineWidth = 1;
+    gctx.beginPath(); gctx.moveTo(padL, base); gctx.lineTo(W - padR, base); gctx.stroke();
+    gctx.strokeStyle = '#46D99A'; gctx.lineWidth = 1.8;
+    gctx.beginPath();
+    for (let i = 0; i < N; i += 2) {
+      const x = X(i / SIM), y = base - exTerm[i] * accScale;
+      i === 0 ? gctx.moveTo(x, y) : gctx.lineTo(x, y);
+    }
+    gctx.stroke();
+    gctx.fillStyle = '#46D99A'; gctx.font = '11px sans-serif'; gctx.textAlign = 'left';
+    gctx.fillText('引いている量(ならした加速度 × k·σ²)', padL + 4, base - 8);
+  }
+
+  // 表示中の動き(実線・アンバー)
+  const src = state.stage >= 4 ? yAnim : currentPhys();
+  gctx.strokeStyle = '#FFB45C'; gctx.lineWidth = 3;
+  gctx.beginPath();
+  for (let i = 0; i < N; i += 2) {
+    const x = X(i / SIM), y = Y(src[i]);
+    i === 0 ? gctx.moveTo(x, y) : gctx.lineTo(x, y);
+  }
+  gctx.stroke();
+
+  // 現在時刻のカーソル(コマ打ちだと階段状に進む)
+  const ts = shownTime();
+  gctx.strokeStyle = 'rgba(255,180,92,.6)'; gctx.lineWidth = 1.5;
+  gctx.beginPath(); gctx.moveTo(X(ts), padT); gctx.lineTo(X(ts), padT + gh); gctx.stroke();
+  gctx.fillStyle = '#FFB45C';
+  gctx.beginPath(); gctx.arc(X(ts), Y(src[idxAt(ts)]), 5, 0, Math.PI * 2); gctx.fill();
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+let dynK = null, dynKoma = null;
+
+function kLineText() {
+  return `const k = ${state.k.toFixed(2)};   // ← スライダー(0 で物理に戻る)`;
+}
+function komaLineText() {
+  return `表示時刻 = Math.floor(時刻 * 24 / ${state.koma}) * ${state.koma} / 24;`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  add('// 時刻を進めながら、ボールの高さを先に全部作っておく');
+  if (s === 1) {
+    add('let y = 1.5, v = -1.2;          // 高さと、一定の速度', 'hl');
+  } else {
+    add('let y = 1.5, v = 0;             // 高さと速度(はじめは静止)', s === 2 ? 'hl' : '');
+  }
+  add('for (let t = 0; t < 3.6; t += dt) {');
+  add('  if (t > 0.5) {                 // 0.5秒後に、手を離す');
+  if (s >= 2) {
+    add('    v = v - 6.0 * dt;          // ★ 重力で速度が増える(等加速度直線運動)', s === 2 ? 'add' : '');
+  }
+  add('    y = y + v * dt;              // 速度のぶん、位置が進む' + (s === 1 ? '(等速直線運動)' : ''), s === 1 ? 'hl' : '');
+  if (s >= 3) {
+    add('    if (y < 半径) {            // 床に当たったら', s === 3 ? 'add' : '');
+    add('      y = 半径;  v = -v * 0.62; // ★ 反発係数 e = 0.62 で跳ね返る', s === 3 ? 'add' : '');
+    add('    }', s === 3 ? 'add' : '');
+  } else {
+    add('    if (y < 半径) y = 半径;     // 床で止まる');
+  }
+  add('  }');
+  add('  物理[t] = y;');
+  add('}');
+  if (s >= 4) {
+    add('');
+    add('// ★ アニメ化フィルタ(Wang et al., SIGGRAPH 2006)', s === 4 ? 'add' : '');
+    add('//    位置の変化が速度、速度の変化が加速度(高校物理)', s === 4 ? 'add' : '');
+    add(kLineText(), (s === 4 ? 'add ' : '') + 'dynk');
+    add('const b = ならす(物理, σ);      // 前後の重みつき平均で、角を丸める', s === 4 ? 'add' : '');
+    add('for (各 t) {', s === 4 ? 'add' : '');
+    add('  アニメ[t] = 物理[t] - k * σ*σ * 加速度(b, t);  // 加速度が立った瞬間ほど、反対へ', s === 4 ? 'add' : '');
+    add('}', s === 4 ? 'add' : '');
+  }
+  if (s >= 5) {
+    add('');
+    add('// ★ つぶしと伸ばし:めり込みは「つぶれ」に、速さは「伸び」に', s === 5 ? 'add' : '');
+    add('if (アニメ[t] < 半径) {                 // 着地:つぶす', s === 5 ? 'add' : '');
+    add('  縦 = Math.max(0.5, 1 - 0.9 * めり込み / 半径);', s === 5 ? 'add' : '');
+    add('} else {                                // 空中:伸ばす', s === 5 ? 'add' : '');
+    add('  縦 = 1 + 0.35 * 速さ / 最大速さ;', s === 5 ? 'add' : '');
+    add('}', s === 5 ? 'add' : '');
+    add('横 = 1 / 縦;                            // 体積は保つ', s === 5 ? 'add' : '');
+  }
+  if (s >= 6) {
+    add('');
+    add('// ★ コマ打ち:同じ絵を n コマぶん使う(n=3 なら実質8枚/秒)', s === 6 ? 'add' : '');
+    add(komaLineText(), (s === 6 ? 'add ' : '') + 'dynkoma');
+  }
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynK = codeEl.querySelector('.cl.dynk code');
+  dynKoma = codeEl.querySelector('.cl.dynkoma code');
+}
+
+/* ---------- 数式パネル(ステージごとに1行ずつ増える) ---------- */
+const mathEl = document.getElementById('math');
+const MATH_ROWS = [
+  { chip: '① 等速直線運動',
+    mf: 'y(t) = y₀ + v·t<span class="note">(v は一定)</span>' },
+  { chip: '② 等加速度直線運動',
+    mf: 'v(t) = −g·t 、 y(t) = y₀ − ½·g·t²' },
+  { chip: '③ 跳ね返り',
+    mf: 'v′ = −e·v<span class="note">(反発係数 e = 0.62)</span>' },
+  { chip: '④ 誇張フィルタ',
+    mf: 'yアニメ(t) = y(t) − k·σ²·ỹ″(t)<span class="note">(ỹ = ならした y、″ = 加速度、k = <span id="mk">1.50</span>)</span>' },
+  { chip: '⑤ つぶしと伸ばし',
+    mf: '縦 = 1 + 0.35·|v|/v最大 、 横 = 1 / 縦<span class="note">(縦 × 横 = 1:体積を保つ)</span>' },
+  { chip: '⑥ コマ打ち',
+    mf: 't表示 = ⌊t·24/n⌋ · n/24<span class="note">(n = <span id="mn">1</span> コマ)</span>' },
+];
+
+function buildMath() {
+  mathEl.innerHTML = MATH_ROWS.slice(0, state.stage).map((r, i) =>
+    `<div class="mrow${i + 1 === state.stage ? ' cur' : ''}"><span class="chip">${r.chip}</span><span class="mf">${r.mf}</span></div>`
+  ).join('');
+  const mk = document.getElementById('mk');
+  if (mk) mk.textContent = state.k.toFixed(2);
+  const mn = document.getElementById('mn');
+  if (mn) mn.textContent = state.koma;
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+function updateReadout() {
+  if (state.stage === 1) {
+    readout.innerHTML = '速度 v は一定。1秒あたり同じ距離だけ進む。グラフは<b>直線</b>。';
+  } else if (state.stage === 2) {
+    readout.innerHTML = '速度が g·t で増える自由落下。グラフは<b>放物線</b>。';
+  } else if (state.stage === 3) {
+    readout.innerHTML = '衝突のたびに、速さが <b>0.62 倍</b>(反発係数)。教科書どおりの完成形。';
+  } else if (state.stage === 4) {
+    readout.innerHTML = `急ブレーキで体がつんのめるのと同じ。加速度の山(緑)の瞬間だけ、動きが行き過ぎる。k = <b>${state.k.toFixed(2)}</b>`;
+  } else if (state.stage === 5) {
+    readout.innerHTML = '落下中は縦に伸び、着地でつぶれる。急に止まれないやわらかさを、形で見せる。';
+  } else {
+    const fps = Math.round(24 / state.koma);
+    readout.innerHTML = `いま <b>${state.koma}コマ打ち</b> = 実質 <b>${fps}枚/秒</b>。グラフのカーソルが階段状に進む。`;
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(6, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  document.getElementById('k-row').classList.toggle('hidden', state.stage < 4);
+  document.getElementById('koma-row').classList.toggle('hidden', state.stage < 6);
+  document.getElementById('legend-phys').classList.toggle('hidden', state.stage < 4);
+  buildCode();
+  buildMath();
+  updateReadout();
+}
+
+/* ---------- コントロール ---------- */
+const playBtn = document.getElementById('play-btn');
+function setPlaying(on) {
+  state.playing = on;
+  playBtn.textContent = on ? '⏸ 一時停止(Space)' : '▶ 再生(Space)';
+  lastNow = null;
+}
+playBtn.addEventListener('click', () => setPlaying(!state.playing));
+document.getElementById('restart-btn').addEventListener('click', () => { phase = 0; lastNow = null; });
+const slowBtn = document.getElementById('slow-btn');
+slowBtn.addEventListener('click', () => {
+  state.slow = !state.slow;
+  slowBtn.classList.toggle('active', state.slow);
+});
+
+const sk = document.getElementById('sk'), okOut = document.getElementById('ok');
+sk.addEventListener('input', () => {
+  state.k = parseFloat(sk.value);
+  okOut.value = state.k.toFixed(2);
+  recomputeFilter();
+  if (dynK) dynK.innerHTML = highlightJS(kLineText());
+  const mk = document.getElementById('mk');
+  if (mk) mk.textContent = state.k.toFixed(2);
+  updateReadout();
+});
+
+document.querySelectorAll('.btn.koma').forEach(b => {
+  b.addEventListener('click', () => {
+    state.koma = +b.dataset.koma;
+    document.querySelectorAll('.btn.koma').forEach(x => x.classList.toggle('active', x === b));
+    if (dynKoma) dynKoma.innerHTML = highlightJS(komaLineText());
+    const mn = document.getElementById('mn');
+    if (mn) mn.textContent = state.koma;
+    updateReadout();
+  });
+});
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '6') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+  else if (ev.key === ' ') { ev.preventDefault(); setPlaying(!state.playing); }
+  else if (ev.key === 'r' || ev.key === 'R') { phase = 0; lastNow = null; }
+});
+
+/* ---------- メインループ ---------- */
+function tick(now) {
+  if (state.playing) {
+    if (lastNow !== null) phase = (phase + (now - lastNow) / 1000 * (state.slow ? 0.4 : 1)) % T;
+    lastNow = now;
+  } else {
+    lastNow = null;
+  }
+  render();
+  drawGraph();
+  requestAnimationFrame(tick);
+}
+
+/* ---------- 起動 ---------- */
+setStage(1);
+setPlaying(true);
+requestAnimationFrame(tick);
+</script>

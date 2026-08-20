@@ -1,0 +1,1143 @@
+<title>内積ひとつで絵が変わる — CG第1回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+  .panel-head .dot.c{background:var(--cyan)}
+
+  /* 左カラム */
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1; cursor:crosshair; touch-action:none}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .brush-hint{font-size:13px; color:var(--sub)}
+  .brush-hint b{color:var(--text); font-weight:600}
+
+  #graph{display:block; width:100%; height:190px}
+
+  .mini-btn{
+    margin-left:auto; font:inherit; font-size:12px; color:var(--sub);
+    background:transparent; border:1px solid var(--line); border-radius:5px;
+    padding:2px 10px; cursor:pointer; letter-spacing:0;
+  }
+  .mini-btn:hover{color:var(--text)}
+  .mini-btn[aria-pressed="true"]{color:#141005; background:var(--amber); border-color:var(--amber)}
+
+  /* 内積の定義パネル */
+  #formula{padding:14px 18px 12px; display:flex; flex-direction:column; gap:10px}
+  .f-main{
+    display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:24px; line-height:1.2;
+  }
+  .f-eq{padding-top:2px}
+  .frag{display:inline-flex; flex-direction:column; align-items:center; gap:3px}
+  .frag .val{font-size:13.5px; color:var(--amber); white-space:nowrap}
+  .frag .sym.f-n, .frag .val.f-n{color:var(--green)}
+  .frag .sym.f-l, .frag .val.f-l{color:var(--cyan)}
+  .frag .val .bad{color:var(--red)}
+  .f-sub{font-family:ui-monospace,Menlo,monospace; font-size:15px; color:var(--sub)}
+  .f-sub b{color:var(--cyan); font-weight:600}
+  .f-legend{font-size:12.5px; color:var(--sub)}
+  .f-cos{font-size:13px; color:var(--sub); border-top:1px solid var(--line); padding-top:8px}
+  /* 段階表示:0=式のみ / 1=+値 / 2=+cosの代表値 / 3=+√の展開 */
+  #formula .f-main .val{visibility:hidden}
+  #formula[data-step="1"] .f-main .val,
+  #formula[data-step="2"] .f-main .val,
+  #formula[data-step="3"] .f-main .val{visibility:visible}
+  #formula .f-cos{display:none}
+  #formula[data-step="2"] .f-cos,
+  #formula[data-step="3"] .f-cos{display:block}
+  #formula .f-sub{display:none}
+  #formula[data-step="3"] .f-sub{display:block}
+  .mini-btn:disabled{opacity:.55; cursor:default}
+  .legend{
+    display:flex; gap:18px; padding:6px 14px 10px; font-size:12.5px; color:var(--sub);
+  }
+  .legend .sw{display:inline-block; width:22px; height:0; vertical-align:middle; margin-right:6px;
+    border-top:3px solid var(--amber); border-radius:2px}
+  .legend .sw.dash{border-top:2px dashed var(--cyan)}
+
+  /* 右:コード */
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+</style>
+
+<header>
+  <h1>内積ひとつで絵が変わる<small>コンピュータグラフィックス 第1回 実演 — 明るさ = cos θ</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>8</kbd> / <kbd>←</kbd><kbd>→</kbd> で切替</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果
+        <button class="mini-btn" id="overlay-btn" aria-pressed="true">図解モード ON(V)</button>
+      </div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel hidden" id="formula-panel">
+      <div class="panel-head"><span class="dot"></span>内積の定義(いまの値)
+        <button class="mini-btn" id="formula-next">▼ 次を表示(F) 0/3</button>
+      </div>
+      <div id="formula" data-step="0">
+        <div class="f-main">
+          <span class="frag"><span class="sym">a · b</span><span class="val" id="fv-d">0.00</span></span>
+          <span class="f-eq">=</span>
+          <span class="frag"><span class="sym f-n">|a|</span><span class="val f-n">1.00</span></span>
+          <span class="frag"><span class="sym f-l">|b|</span><span class="val f-l" id="fv-b">1.73</span></span>
+          <span class="frag"><span class="sym">cos θ</span><span class="val" id="fv-c">0.00</span></span>
+        </div>
+        <div class="f-sub" id="fv-len"></div>
+        <div class="f-legend">a = 面の向きの矢印(緑) b = 光の矢印(青)。球にマウスを乗せると、その点の値になります。</div>
+        <div class="f-cos">cos 0° = 1  cos 45° ≈ 0.71  cos 90° = 0  cos 135° ≈ −0.71(マイナスの明るさは無い → 0 で止める)</div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="plane-panel">
+      <div class="panel-head"><span class="dot"></span>光源の位置(レールの上を動く)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="sphi">角度 φ</label>
+          <input type="range" id="sphi" min="-80" max="80" step="1" value="0">
+          <output id="ophi">0°</output>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="light-panel">
+      <div class="panel-head"><span class="dot"></span>光の向き ※ 強さのつまみは、どこにも無い</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="slx">左右(lx)</label>
+          <input type="range" id="slx" min="-2" max="2" step="0.05" value="1">
+          <output id="olx">1.00</output>
+        </div>
+        <div class="ctl-row">
+          <label for="sly">上下(ly)</label>
+          <input type="range" id="sly" min="-2" max="2" step="0.05" value="1">
+          <output id="oly">1.00</output>
+        </div>
+        <div class="ctl-row">
+          <button class="btn" id="sweep" aria-pressed="false">▶ 光を自動で往復(S)</button>
+          <button class="btn" id="light-reset">右上 (1, 1, 1) に戻す</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="brush-panel">
+      <div class="panel-head"><span class="dot"></span>法線の手編集</div>
+      <div class="controls">
+        <div class="brush-hint">球を<b>ドラッグ</b>:陰を消す(法線を光へ向ける) / <b>Shift+ドラッグ</b>:陰を足す(光から背ける)</div>
+        <div class="ctl-row">
+          <button class="btn" id="brush-reset">編集をリセット(R)</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="graph-panel">
+      <div class="panel-head"><span class="dot c"></span>cos θ のグラフ(θ = 法線と光のなす角)</div>
+      <canvas id="graph"></canvas>
+      <div class="legend">
+        <span><span class="sw"></span>画面の明るさ</span>
+        <span><span class="sw dash"></span>cos θ そのまま</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — ピクセルごとに実行される関数
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = {
+  stage: 1,
+  lx: 1, ly: 1,
+  phi: 0,               // ②平面の実験:光源の位置の角度(度)
+  hover: null,          // {x, y}(球面ワールド座標)
+  fontIdx: 1,
+  overlay: true,        // 図解モード:球に矢印・ランプ・θを重ね描き
+  formulaStep: 0,       // ④の式パネルの段階表示(0=式のみ 〜 3=√展開まで)
+};
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 症状',       note:'光の「向き」をスライダー(または S で自動往復)で動かす。向きしか変えていないのに、球ぜんたいの明るさが変わる。……おかしくないですか?' },
+  { label:'② 平面で考える', note:'面がひとつだけの世界。光源の位置を動かすと、面と光のなす角 θ が変わって、暗くなる。明るさ = cos θ——さっきの手のひらの実験そのもの。' },
+  { label:'③ 球は面の集まり', note:'球の表面は、向きの違う小さな面の集まり(1ピクセル = 1枚の面)。どの点でも②と同じ計算をしたい。……では、各点の θ を、どうやって知る?' },
+  { label:'④ 診断',       note:'答え:内積——2本の矢印から θ を測る道具。F キーで、式 → いまの値 → cos の値 → 長さの正体、と1段ずつ絞り込む。絵はまだ壊れたまま。' },
+  { label:'⑤ 修正',       note:'診断が正しければ、修正は3行。同じ操作をしても、もう明るさは揺れない。ハイライトだけが動く。' },
+  { label:'⑥ cos θ グラフ', note:'90° から先は cos θ がマイナス → 0 で止める(クランプ)。いま出ているのは「陰」。地面に落ちる「影」は別の計算(この球には無い)。' },
+  { label:'⑦ アニメの陰',  note:'今度の違和感は逆——物理的には正しいのに、アニメに見えない。0.5 を境に 2 段階へ。同じ数学で、今度は物理をわざと外す。' },
+  { label:'⑧ 法線を編集',  note:'「陰の位置が気持ち悪い」という違和感への対処。球をドラッグして陰を彫る(Shift+ドラッグで陰を足す。R でリセット)。美術の判断を、矢印の向きに翻訳する。' },
+];
+
+/* ---------- 法線編集グリッド ---------- */
+const G = 110;                      // グリッド解像度
+const edits = new Float32Array(G * G * 3);   // 法線に足すズレ (x,y,z)
+const WORLD = 1.08;                 // 描画範囲 [-WORLD, WORLD]
+
+function sampleEdit(x, y, out) {
+  const u = (x + WORLD) / (2 * WORLD) * (G - 1);
+  const v = (WORLD - y) / (2 * WORLD) * (G - 1);
+  const u0 = Math.max(0, Math.min(G - 2, Math.floor(u)));
+  const v0 = Math.max(0, Math.min(G - 2, Math.floor(v)));
+  const fu = u - u0, fv = v - v0;
+  for (let c = 0; c < 3; c++) {
+    const a = edits[(v0 * G + u0) * 3 + c],     b = edits[(v0 * G + u0 + 1) * 3 + c];
+    const d = edits[((v0 + 1) * G + u0) * 3 + c], e = edits[((v0 + 1) * G + u0 + 1) * 3 + c];
+    out[c] = (a * (1 - fu) + b * fu) * (1 - fv) + (d * (1 - fu) + e * fu) * fv;
+  }
+}
+
+/* ---------- 光ベクトル ---------- */
+function lightVec() {
+  let lx = state.lx, ly = state.ly, lz = 1;
+  if (state.stage >= 5) {
+    const len = Math.hypot(lx, ly, lz) || 1;
+    lx /= len; ly /= len; lz /= len;
+  }
+  return [lx, ly, lz];
+}
+function lightVecNormalized() {
+  const len = Math.hypot(state.lx, state.ly, 1) || 1;
+  return [state.lx / len, state.ly / len, 1 / len];
+}
+
+/* ---------- 球のレンダリング(ソフトウェア) ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520;
+const img = vctx.createImageData(RES, RES);
+const BASE = [248, 216, 190];       // 球の素の色(正しい絵では最大でもこの色止まり)
+const BG = [255, 255, 255];         // 紙のような白。白飛びすると球が背景に溶けて見える
+
+const _e = new Float32Array(3);
+
+function normalAt(x, y) {
+  const r2 = x * x + y * y;
+  if (r2 > 1) return null;
+  let nx = x, ny = y, nz = Math.sqrt(1 - r2);
+  if (state.stage >= 8) {
+    sampleEdit(x, y, _e);
+    nx += _e[0]; ny += _e[1]; nz += _e[2];
+    const n = Math.hypot(nx, ny, nz) || 1;
+    nx /= n; ny /= n; nz /= n;
+  }
+  return [nx, ny, nz];
+}
+
+// 図解モード中は球を小さめに描き、矢印とランプの居場所を作る
+function viewXform() {
+  return state.overlay
+    ? { u: 95, cx: RES * 0.40, cy: RES * 0.60 }
+    : { u: RES / (2 * WORLD), cx: RES / 2, cy: RES / 2 };
+}
+
+function render() {
+  if (state.stage === 2) { renderPlane(); return; }
+  const [lx, ly, lz] = lightVec();
+  const data = img.data;
+  const { u, cx, cy } = viewXform();
+  const stage = state.stage;
+  let i = 0;
+  for (let py = 0; py < RES; py++) {
+    const y = (cy - (py + 0.5)) / u;
+    for (let px = 0; px < RES; px++, i += 4) {
+      const x = ((px + 0.5) - cx) / u;
+      const r2 = x * x + y * y;
+      // 輪郭のアンチエイリアス被覆率
+      const cov = Math.max(0, Math.min(1, (1 - Math.sqrt(r2)) * u + 0.5));
+      if (cov <= 0) {
+        data[i] = BG[0]; data[i + 1] = BG[1]; data[i + 2] = BG[2]; data[i + 3] = 255;
+        continue;
+      }
+      const rr = Math.min(r2, 0.999999);
+      let nx = x, ny = y, nz = Math.sqrt(1 - rr);
+      if (stage >= 8) {
+        sampleEdit(x, y, _e);
+        nx += _e[0]; ny += _e[1]; nz += _e[2];
+        const n = Math.hypot(nx, ny, nz) || 1;
+        nx /= n; ny /= n; nz /= n;
+      }
+      let d = nx * lx + ny * ly + nz * lz;   // 内積(修正前は |L| が 1 でないまま)
+      d = Math.max(0, d);
+      if (stage >= 7) d = d > 0.5 ? 1.0 : 0.25;
+      const R = Math.min(255, BASE[0] * d);
+      const Gc = Math.min(255, BASE[1] * d);
+      const B = Math.min(255, BASE[2] * d);
+      data[i]     = R * cov + BG[0] * (1 - cov);
+      data[i + 1] = Gc * cov + BG[1] * (1 - cov);
+      data[i + 2] = B * cov + BG[2] * (1 - cov);
+      data[i + 3] = 255;
+    }
+  }
+  vctx.putImageData(img, 0, 0);
+  if (state.overlay) drawOverlay();
+  // ホバー位置のマーカー
+  if (state.hover) {
+    const hx = cx + state.hover.x * u;
+    const hy = cy - state.hover.y * u;
+    vctx.strokeStyle = '#E0821F';
+    vctx.lineWidth = 2;
+    vctx.beginPath();
+    vctx.arc(hx, hy, 9, 0, Math.PI * 2);
+    vctx.stroke();
+  }
+}
+
+/* ---------- cos θ グラフ ---------- */
+const graph = document.getElementById('graph');
+const gctx = graph.getContext('2d');
+
+function brightnessOfCos(c) {
+  let d = Math.max(0, c);
+  if (state.stage >= 7) d = d > 0.5 ? 1.0 : 0.25;
+  return d;
+}
+
+function drawGraph() {
+  if (state.stage < 6) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = graph.clientWidth, H = graph.clientHeight;
+  if (graph.width !== W * dpr) { graph.width = W * dpr; graph.height = H * dpr; }
+  gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  gctx.clearRect(0, 0, W, H);
+
+  const padL = 40, padR = 16, padT = 14, padB = 26;
+  const gw = W - padL - padR, gh = H - padT - padB;
+  const X = th => padL + th / 180 * gw;                 // θ(度)→x
+  const Y = v => padT + (1 - (v + 1) / 2) * gh;         // 値[-1,1]→y
+
+  // 目盛り
+  gctx.strokeStyle = '#26304A'; gctx.lineWidth = 1;
+  gctx.fillStyle = '#93A0B4'; gctx.font = '11px ui-monospace, Menlo, monospace';
+  gctx.textAlign = 'center';
+  for (const th of [0, 45, 90, 135, 180]) {
+    gctx.beginPath(); gctx.moveTo(X(th), padT); gctx.lineTo(X(th), padT + gh); gctx.stroke();
+    gctx.fillText(th + '°', X(th), H - 8);
+  }
+  gctx.textAlign = 'right';
+  for (const v of [1, 0, -1]) {
+    gctx.beginPath(); gctx.moveTo(padL, Y(v)); gctx.lineTo(W - padR, Y(v)); gctx.stroke();
+    gctx.fillText(String(v), padL - 8, Y(v) + 4);
+  }
+  // ゼロ線を少し強く
+  gctx.strokeStyle = '#3B4970';
+  gctx.beginPath(); gctx.moveTo(padL, Y(0)); gctx.lineTo(W - padR, Y(0)); gctx.stroke();
+
+  // 閾値線(アニメ調のとき)
+  if (state.stage >= 7) {
+    gctx.strokeStyle = 'rgba(255,180,92,.5)';
+    gctx.setLineDash([5, 5]);
+    gctx.beginPath(); gctx.moveTo(padL, Y(0.5)); gctx.lineTo(W - padR, Y(0.5)); gctx.stroke();
+    gctx.setLineDash([]);
+    gctx.fillStyle = '#FFB45C'; gctx.textAlign = 'left';
+    gctx.fillText('0.5', padL + 4, Y(0.5) - 5);
+  }
+
+  // cos θ そのまま(点線・シアン)
+  gctx.strokeStyle = '#6CC6FF'; gctx.lineWidth = 1.6; gctx.setLineDash([5, 5]);
+  gctx.beginPath();
+  for (let th = 0; th <= 180; th += 2) {
+    const y = Y(Math.cos(th * Math.PI / 180));
+    th === 0 ? gctx.moveTo(X(th), y) : gctx.lineTo(X(th), y);
+  }
+  gctx.stroke(); gctx.setLineDash([]);
+
+  // 画面の明るさ(実線・アンバー)
+  gctx.strokeStyle = '#FFB45C'; gctx.lineWidth = 3;
+  gctx.beginPath();
+  let started = false;
+  for (let th = 0; th <= 180; th += 1) {
+    const v = brightnessOfCos(Math.cos(th * Math.PI / 180));
+    const y = Y(v);
+    if (!started) { gctx.moveTo(X(th), y); started = true; }
+    else gctx.lineTo(X(th), y);
+  }
+  gctx.stroke();
+
+  // ホバーマーカー
+  if (state.hover) {
+    const n = normalAt(state.hover.x, state.hover.y);
+    if (n) {
+      const [lx, ly, lz] = lightVecNormalized();
+      const c = Math.max(-1, Math.min(1, n[0] * lx + n[1] * ly + n[2] * lz));
+      const th = Math.acos(c) * 180 / Math.PI;
+      gctx.strokeStyle = 'rgba(255,180,92,.6)';
+      gctx.beginPath(); gctx.moveTo(X(th), padT); gctx.lineTo(X(th), padT + gh); gctx.stroke();
+      gctx.fillStyle = '#FFB45C';
+      gctx.beginPath(); gctx.arc(X(th), Y(brightnessOfCos(c)), 6, 0, Math.PI * 2); gctx.fill();
+      gctx.strokeStyle = '#0E1219'; gctx.lineWidth = 2;
+      gctx.beginPath(); gctx.arc(X(th), Y(brightnessOfCos(c)), 6, 0, Math.PI * 2); gctx.stroke();
+    }
+  }
+}
+
+/* ---------- ②:平面の実験(光源がレールの上を動く) ---------- */
+const PL = { cx: RES / 2, cy: 372, arcR: 235 };
+
+function renderPlane() {
+  const ctx = vctx;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, RES, RES);
+  const phi = state.phi * Math.PI / 180;
+  const c = Math.cos(phi);
+
+  // 光源のレール(弧)
+  ctx.strokeStyle = '#D8DEE8'; ctx.lineWidth = 2; ctx.setLineDash([4, 7]);
+  ctx.beginPath();
+  ctx.arc(PL.cx, PL.cy, PL.arcR, -Math.PI / 2 - 1.5, -Math.PI / 2 + 1.5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 面(スラブ)。上面の色 = 素の色 × cosθ
+  const r = Math.min(255, BASE[0] * c), g = Math.min(255, BASE[1] * c), b = Math.min(255, BASE[2] * c);
+  ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
+  ctx.strokeStyle = '#3A4560'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.rect(PL.cx - 130, PL.cy, 260, 16); ctx.fill(); ctx.stroke();
+
+  // ランプの位置と光の矢印(面の中心 → ランプ)
+  const lampX = PL.cx + Math.sin(phi) * PL.arcR;
+  const lampY = PL.cy - Math.cos(phi) * PL.arcR;
+  haloArrow(ctx, PL.cx, PL.cy, lampX, lampY, 11, '#2B7FD4', 3);
+
+  // 面の向きの矢印(真上・固定)
+  haloArrow(ctx, PL.cx, PL.cy, PL.cx, PL.cy - 100, 10, '#1E9E6C', 2.6);
+  ctx.font = '13px sans-serif'; ctx.textAlign = 'left';
+  haloText(ctx, '面の向き', PL.cx + 10, PL.cy - 92, '#1E9E6C');
+
+  // θ の弧
+  const aN = -Math.PI / 2;
+  const aL = Math.atan2(lampY - PL.cy, lampX - PL.cx);
+  const d0 = Math.min(aN, aL), d1 = Math.max(aN, aL);
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4.5;
+  ctx.beginPath(); ctx.arc(PL.cx, PL.cy, 46, d0, d1); ctx.stroke();
+  ctx.strokeStyle = '#3A4560'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.arc(PL.cx, PL.cy, 46, d0, d1); ctx.stroke();
+  const aMid = (d0 + d1) / 2;
+  ctx.font = '14px ui-monospace, Menlo, monospace'; ctx.textAlign = 'center';
+  haloText(ctx, `θ = ${Math.abs(state.phi)}°`, PL.cx + 72 * Math.cos(aMid), PL.cy + 72 * Math.sin(aMid) + 5, '#3A4560');
+
+  // ランプ
+  ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(lampX, lampY, 8, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#FFB45C';
+  ctx.beginPath(); ctx.arc(lampX, lampY, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#E0821F'; ctx.lineWidth = 2;
+  for (let k2 = 0; k2 < 8; k2++) {
+    const a = k2 * Math.PI / 4;
+    ctx.beginPath();
+    ctx.moveTo(lampX + 12 * Math.cos(a), lampY + 12 * Math.sin(a));
+    ctx.lineTo(lampX + 17 * Math.cos(a), lampY + 17 * Math.sin(a));
+    ctx.stroke();
+  }
+
+  // 明るさの表示
+  ctx.font = '15px ui-monospace, Menlo, monospace'; ctx.textAlign = 'center';
+  haloText(ctx, `明るさ = cos θ = ${c.toFixed(2)}`, PL.cx, PL.cy + 52, '#C06E10');
+}
+
+/* ---------- 図解モード:球に矢印・ランプ・θを重ね描き ---------- */
+const DEFAULT_N = (() => {
+  const v = [-0.3, 0.75, 0.6];
+  const l = Math.hypot(v[0], v[1], v[2]);
+  return [v[0] / l, v[1] / l, v[2] / l];
+})();
+
+function drawArrow(ctx, x0, y0, x1, y1, head) {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - head * Math.cos(a - 0.45), y1 - head * Math.sin(a - 0.45));
+  ctx.lineTo(x1 - head * Math.cos(a + 0.45), y1 - head * Math.sin(a + 0.45));
+  ctx.closePath(); ctx.fill();
+}
+
+function haloArrow(ctx, x0, y0, x1, y1, head, color, width) {
+  ctx.strokeStyle = ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.lineWidth = width + 3.5;
+  drawArrow(ctx, x0, y0, x1, y1, head + 3);
+  ctx.strokeStyle = ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  drawArrow(ctx, x0, y0, x1, y1, head);
+}
+function haloText(ctx, text, x, y, color) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+function drawOverlay() {
+  const { u, cx, cy } = viewXform();
+  const P = (x, y, z) => [cx + u * (x + 0.42 * z), cy - u * (y + 0.26 * z)];
+  const s = state.stage;
+  const showNormal = s >= 4;                                        // ④〜:中心からの2本の矢印と θ(板書の図)
+  const showLength = s >= 5 || (s === 4 && state.formulaStep >= 3); // ④のF3段目〜:長さの種明かし
+  const fixed = s >= 5;                                             // ⑤〜:長さ1に切り揃えた矢印
+
+  const Lx = state.lx, Ly = state.ly, Lz = 1;
+  const len = Math.hypot(Lx, Ly, Lz);
+  const U = [Lx / len, Ly / len, Lz / len];
+
+  // 面の向き:ホバー中はその点の法線、それ以外は固定サンプル
+  let N = DEFAULT_N;
+  if (state.hover) {
+    const n = normalAt(state.hover.x, state.hover.y);
+    if (n) N = n;
+  }
+  const cosT = Math.max(-1, Math.min(1, N[0] * U[0] + N[1] * U[1] + N[2] * U[2]));
+  const theta = Math.round(Math.acos(cosT) * 180 / Math.PI);
+
+  const nT = P(N[0], N[1], N[2]);          // 面の向きの矢印の先端
+  const lT = P(Lx, Ly, Lz);                // 光の矢印の先端(=ランプ)
+  const uT = P(U[0], U[1], U[2]);          // 長さ1の目盛り位置
+  const ctx = vctx;
+  ctx.font = '14px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'left';
+
+  // θ の弧(②〜)
+  if (showNormal) {
+    const aN = Math.atan2(nT[1] - cy, nT[0] - cx);
+    const aL = Math.atan2(lT[1] - cy, lT[0] - cx);
+    let d0 = aN, d1 = aL;
+    if (((d1 - d0) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) > Math.PI) { d0 = aL; d1 = aN; }
+    const arcR = Math.min(48, u * 0.5);
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 4.5;
+    ctx.beginPath(); ctx.arc(cx, cy, arcR, d0, d1); ctx.stroke();
+    ctx.strokeStyle = '#3A4560'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(cx, cy, arcR, d0, d1); ctx.stroke();
+    const aMid = d0 + ((((d1 - d0) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / 2;
+    ctx.textAlign = 'center';
+    haloText(ctx, `θ = ${theta}°`, cx + (arcR + 22) * Math.cos(aMid), cy + (arcR + 22) * Math.sin(aMid) + 5, '#3A4560');
+  }
+
+  // 光の矢印(青)
+  if (fixed) {
+    // 正規化後:目盛りから先は点線(使っていない部分)
+    ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 4.5;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(lT[0], lT[1]); ctx.stroke();
+    ctx.strokeStyle = '#2B7FD4'; ctx.lineWidth = 1.6;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.moveTo(uT[0], uT[1]); ctx.lineTo(lT[0], lT[1]); ctx.stroke();
+    ctx.setLineDash([]);
+  } else {
+    haloArrow(ctx, cx, cy, lT[0], lT[1], 11, '#2B7FD4', 3);
+  }
+
+  // 「長さ1」の目盛り(種明かし以降)
+  if (showLength) {
+    const aa = Math.atan2(lT[1] - cy, lT[0] - cx);
+    ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(uT[0] - 9 * Math.sin(aa), uT[1] + 9 * Math.cos(aa));
+    ctx.lineTo(uT[0] + 9 * Math.sin(aa), uT[1] - 9 * Math.cos(aa));
+    ctx.stroke();
+    ctx.strokeStyle = '#3A4560'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(uT[0] - 8 * Math.sin(aa), uT[1] + 8 * Math.cos(aa));
+    ctx.lineTo(uT[0] + 8 * Math.sin(aa), uT[1] - 8 * Math.cos(aa));
+    ctx.stroke();
+  }
+
+  // 実際に使う長さ1の矢印(オレンジ・③〜)
+  if (fixed) haloArrow(ctx, cx, cy, uT[0], uT[1], 11, '#E0821F', 3);
+
+  // 面の向きの矢印(緑・②〜)
+  if (showNormal) {
+    haloArrow(ctx, cx, cy, nT[0], nT[1], 10, '#1E9E6C', 2.6);
+    ctx.textAlign = nT[0] < cx ? 'right' : 'left';
+    ctx.font = '13px sans-serif';
+    haloText(ctx, showLength ? '面の向き(長さ1)' : '面の向き', nT[0] + (nT[0] < cx ? -10 : 10), nT[1] - 8, '#1E9E6C');
+  }
+
+  // ランプ
+  ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(lT[0], lT[1], 8, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#FFB45C';
+  ctx.beginPath(); ctx.arc(lT[0], lT[1], 8, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#E0821F'; ctx.lineWidth = 2;
+  for (let k = 0; k < 8; k++) {
+    const b = k * Math.PI / 4;
+    ctx.beginPath();
+    ctx.moveTo(lT[0] + 12 * Math.cos(b), lT[1] + 12 * Math.sin(b));
+    ctx.lineTo(lT[0] + 17 * Math.cos(b), lT[1] + 17 * Math.sin(b));
+    ctx.stroke();
+  }
+
+  // ラベル
+  ctx.font = '14px ui-monospace, Menlo, monospace';
+  ctx.textAlign = 'left';
+  const mx = (cx + lT[0]) / 2, my = (cy + lT[1]) / 2;
+  if (showLength) {
+    haloText(ctx, `${fixed ? 'もとの長さ' : '長さ'} ${len.toFixed(2)}`, mx + 12, my + 2, '#2B7FD4');
+    if (fixed) {
+      ctx.font = '13px sans-serif';
+      haloText(ctx, '1.00 に切り揃えて使う', (cx + uT[0]) / 2 + 12, (cy + uT[1]) / 2 + 20, '#C06E10');
+    }
+  } else {
+    ctx.font = '13px sans-serif';
+    haloText(ctx, '光の向き', lT[0] + 20, lT[1] + 5, '#2B7FD4');
+  }
+
+  // ③:球は小さな面の集まり — ふちの法線たちと、ホバー点の「小さな面」
+  if (s === 3) {
+    for (let a = 0; a < 8; a++) {
+      const A = a * Math.PI / 4;
+      const bx = cx + Math.cos(A) * u, by = cy - Math.sin(A) * u;
+      haloArrow(ctx, bx, by, bx + Math.cos(A) * 24, by - Math.sin(A) * 24, 6, '#1E9E6C', 2);
+    }
+    const q = [cx + N[0] * u, cy - N[1] * u];      // 表面の点
+    const tip = P(N[0], N[1], N[2]);
+    let dx = tip[0] - cx, dy = tip[1] - cy;
+    const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+    // 小さな面(その点の接平面)
+    ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(q[0] - 30 * dy, q[1] + 30 * dx); ctx.lineTo(q[0] + 30 * dy, q[1] - 30 * dx); ctx.stroke();
+    ctx.strokeStyle = '#3A4560'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(q[0] - 28 * dy, q[1] + 28 * dx); ctx.lineTo(q[0] + 28 * dy, q[1] - 28 * dx); ctx.stroke();
+    // その面の向きの矢印
+    haloArrow(ctx, q[0], q[1], q[0] + dx * 48, q[1] + dy * 48, 9, '#1E9E6C', 2.6);
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = q[0] < cx ? 'right' : 'left';
+    haloText(ctx, '小さな面と、その向き', q[0] + dx * 48 + (q[0] < cx ? -8 : 8), q[1] + dy * 48 - 6, '#1E9E6C');
+  }
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+const fmt = v => (v >= 0 ? ' ' : '') + v.toFixed(2);
+let dynEl = null;   // 光の行(スライダー連動)の <code> 要素
+
+function lightLineText() {
+  return `  let lx = ${fmt(state.lx)}, ly = ${fmt(state.ly)}, lz = 1;`;
+}
+function phiLineText() {
+  return `const φ = ${state.phi};              // ← スライダー(光源の位置の角度)`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  if (s === 2) {
+    add('// 平面の実験:光源の位置を変えると、なす角 θ が変わる');
+    add('// 面の向きは真上で固定。明るさは θ だけで決まる');
+    add('');
+    add(phiLineText(), 'dynphi');
+    add('const θ = Math.abs(φ);         // 面の向きと光のなす角');
+    add('明るさ = cos(θ);                // 正面 0° → 1 、 真横 90° → 0', 'hl');
+    add('色 = 素の色 × 明るさ;');
+    return L;
+  }
+
+  if (s === 3) {
+    add('// 球の表面は、向きの違う「小さな面」の集まり', 'hl');
+    add('// 1ピクセル = 1枚の面。それぞれに向きの矢印(法線)がある', 'hl');
+    add('');
+  } else {
+    add('// 球の表面の点ごとに、明るさを計算する');
+    add('// (nx, ny, nz) = 面の向きの矢印(法線・長さ1)');
+  }
+  add('function 明るさ(nx, ny, nz) {', s === 3 ? 'hl' : '');
+  if (s >= 8) {
+    add('');
+    add('  // ★ 手で編集したズレを、法線に足す', 'add');
+    add('  nx += 編集x;  ny += 編集y;  nz += 編集z;', 'add');
+    add('  const n = Math.sqrt(nx*nx + ny*ny + nz*nz);', 'add');
+    add('  nx /= n;  ny /= n;  nz /= n;   // 長さは 1 に戻す', 'add');
+  }
+  add('');
+  add('  // 光の向き(スライダー連動)。初期値は右上 (1, 1, 1)');
+  add(lightLineText(), s === 4 ? 'hl dyn' : 'dyn');
+  if (s >= 5) {
+    add('');
+    add('  // ★ 矢印の長さを 1 に揃える(正規化)', s === 5 ? 'add' : '');
+    add('  const len = Math.sqrt(lx*lx + ly*ly + lz*lz);', s === 5 ? 'add' : '');
+    add('  lx = lx / len;  ly = ly / len;  lz = lz / len;', s === 5 ? 'add' : '');
+  }
+  add('');
+  add('  // 内積:どれくらい正面を向いているか(= cosθ)');
+  add('  let d = nx*lx + ny*ly + nz*lz;', s === 6 ? 'hl' : '');
+  add('');
+  add('  // マイナスの明るさは無い → 0 で止める(クランプ)');
+  add('  d = Math.max(0, d);');
+  if (s >= 7) {
+    add('');
+    add('  // ★ アニメ調:0.5 を境に、明るい / 暗い の2段階', s === 7 ? 'add' : '');
+    add('  d = (d > 0.5) ? 1.0 : 0.25;', s === 7 ? 'add' : '');
+  }
+  add('');
+  add('  return d;   // 0 = 真っ暗、 1 = いちばん明るい');
+  add('}');
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynEl = codeEl.querySelector('.cl.dyn code');
+}
+
+// スライダー操作中は光の行だけ書き換える(全再構築だと追加行の点滅が再発火するため)
+function updateDynLine() {
+  if (dynEl) dynEl.innerHTML = highlightJS(lightLineText());
+}
+
+/* ---------- 読み出し(ホバー) ---------- */
+const readout = document.getElementById('readout');
+
+function updateReadout() {
+  if (state.stage < 6) {
+    const len = Math.hypot(state.lx, state.ly, 1);
+    if (state.stage === 1) {
+      readout.innerHTML = '変えているのは光の<b>向き</b>だけ。強さのつまみは無い。なのに、明るさが変わる。';
+    } else if (state.stage === 2) {
+      const th = Math.abs(state.phi);
+      const c = Math.cos(th * Math.PI / 180);
+      readout.innerHTML = `θ = <b>${th}°</b> → 明るさ cos θ = <b>${c.toFixed(2)}</b>。正面(0°)が最も明るく、真横(90°)で真っ暗。`;
+    } else if (state.stage === 3) {
+      const h = state.hover && normalAt(state.hover.x, state.hover.y);
+      if (h) {
+        const U = lightVecNormalized();
+        const c = Math.max(-1, Math.min(1, h[0] * U[0] + h[1] * U[1] + h[2] * U[2]));
+        readout.innerHTML = `この小さな面の θ = <b>${Math.round(Math.acos(c) * 180 / Math.PI)}°</b>。場所ごとに θ が違うから、丸く見える。`;
+      } else {
+        readout.innerHTML = '球の上にマウスを:その点の「小さな面」と、向きの矢印が見えます。';
+      }
+    } else if (state.stage === 4) {
+      readout.innerHTML = state.formulaStep >= 3
+        ? `光の矢印の長さ = <b>${len.toFixed(2)}</b>。向きを変えると、長さも一緒に変わってしまう。`
+        : '2本の矢印 — 面の向き(緑)と光(青)。なす角が θ。球の上でマウスを動かしてみてください。';
+    } else {
+      readout.innerHTML = `正規化前の長さ = <b>${len.toFixed(2)}</b> → <b>1.00</b> に揃えた。向きを変えても、もう明るさは揺れない。`;
+    }
+    return;
+  }
+  const h = state.hover && normalAt(state.hover.x, state.hover.y);
+  if (!h) {
+    readout.innerHTML = '球の上にマウスを乗せると、その点の θ と cos θ が分かります。';
+    return;
+  }
+  const [lx, ly, lz] = lightVecNormalized();
+  const c = Math.max(-1, Math.min(1, h[0] * lx + h[1] * ly + h[2] * lz));
+  const th = Math.round(Math.acos(c) * 180 / Math.PI);
+  const b = brightnessOfCos(c);
+  let tail;
+  if (state.stage >= 7) {
+    tail = c > 0.5 ? '→ 明るい側 <b>1.00</b>' : `→ 暗い側 <b>0.25</b>`;
+  } else {
+    tail = `→ 画面の明るさ <b>${b.toFixed(2)}</b>`;
+  }
+  readout.innerHTML = `θ = <b>${th}°</b> 、 cos θ = <b>${c.toFixed(2)}</b>  ${tail}`;
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+const brushPanel = document.getElementById('brush-panel');
+const graphPanel = document.getElementById('graph-panel');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(8, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  graphPanel.classList.toggle('hidden', state.stage < 6);
+  document.getElementById('formula-panel').classList.toggle('hidden', state.stage !== 4 && state.stage !== 5);
+  document.getElementById('plane-panel').classList.toggle('hidden', state.stage !== 2);
+  document.getElementById('light-panel').classList.toggle('hidden', state.stage === 2);
+  brushPanel.classList.toggle('hidden', state.stage !== 8);
+  state.overlay = state.stage <= 5;      // ①〜⑤は図解モードを自動ON(Vでいつでも切替)
+  syncOverlayBtn();
+  // 式パネル:④は式のみから開始(Fで1段ずつ)、⑤は最初から全部
+  setFormulaStep(state.stage === 5 ? 3 : 0);
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+
+/* ---------- 図解モードの切替 ---------- */
+const overlayBtn = document.getElementById('overlay-btn');
+function syncOverlayBtn() {
+  overlayBtn.textContent = state.overlay ? '図解モード ON(V)' : '図解モード OFF(V)';
+  overlayBtn.setAttribute('aria-pressed', String(state.overlay));
+}
+overlayBtn.addEventListener('click', () => {
+  state.overlay = !state.overlay;
+  syncOverlayBtn();
+  requestRender();
+});
+
+/* ---------- 内積の定義パネル(ライブ更新+段階表示) ---------- */
+const fvD = document.getElementById('fv-d');
+const fvB = document.getElementById('fv-b');
+const fvC = document.getElementById('fv-c');
+const fvLen = document.getElementById('fv-len');
+const formulaEl = document.getElementById('formula');
+const formulaNextBtn = document.getElementById('formula-next');
+
+// 段階:0=式のみ / 1=いまの値 / 2=cosの代表値 / 3=√の展開(長さの正体)
+function setFormulaStep(n) {
+  state.formulaStep = Math.max(0, Math.min(3, n));
+  formulaEl.dataset.step = state.formulaStep;
+  formulaNextBtn.disabled = state.formulaStep >= 3;
+  formulaNextBtn.textContent = state.formulaStep >= 3 ? '全部表示中' : `▼ 次を表示(F) ${state.formulaStep}/3`;
+  updateFormula();
+  updateReadout();
+  requestRender();
+}
+formulaNextBtn.addEventListener('click', () => setFormulaStep(state.formulaStep + 1));
+
+function updateFormula() {
+  if (state.stage !== 4 && state.stage !== 5) return;
+  const len = Math.hypot(state.lx, state.ly, 1);
+  let N = DEFAULT_N;
+  if (state.hover) {
+    const n = normalAt(state.hover.x, state.hover.y);
+    if (n) N = n;
+  }
+  const U = lightVecNormalized();
+  const c = Math.max(-1, Math.min(1, N[0] * U[0] + N[1] * U[1] + N[2] * U[2]));
+  const root = `√(lx² + ly² + 1²) = √(${(state.lx * state.lx).toFixed(2)} + ${(state.ly * state.ly).toFixed(2)} + 1) = <b>${len.toFixed(2)}</b>`;
+  if (state.stage === 4) {
+    // まだ壊れている:内積に渡しているのは生の矢印。|b| はその長さのまま、積も膨らむ
+    fvB.innerHTML = `<span class="bad">${len.toFixed(2)}</span>`;
+    fvD.textContent = (len * c).toFixed(2);
+    fvLen.innerHTML = `|b| = ${root}`;
+  } else {
+    // 修正後:内積に渡す前に長さを1に揃えてある(正規化は定義ではなく下ごしらえ)
+    fvB.textContent = '1.00';
+    fvD.textContent = c.toFixed(2);
+    fvLen.innerHTML = `正規化前の |b| = ${root} → 1 に揃えてから内積に渡す。<br>正規化は内積の定義の一部ではなく、向きだけを残すための下ごしらえ。`;
+  }
+  fvC.textContent = c.toFixed(2);
+}
+
+/* ---------- 再描画(フレーム間引き) ---------- */
+let pending = false;
+function requestRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => {
+    pending = false;
+    render();
+    drawGraph();
+    updateFormula();
+  });
+}
+
+/* ---------- スライダー ---------- */
+const slx = document.getElementById('slx'), sly = document.getElementById('sly');
+const olx = document.getElementById('olx'), oly = document.getElementById('oly');
+
+function onSlider() {
+  state.lx = parseFloat(slx.value);
+  state.ly = parseFloat(sly.value);
+  olx.value = state.lx.toFixed(2);
+  oly.value = state.ly.toFixed(2);
+  updateDynLine();      // コード内の数値も連動して書き換わる
+  updateReadout();
+  requestRender();
+}
+slx.addEventListener('input', () => { setSweep(false); onSlider(); });
+sly.addEventListener('input', () => { setSweep(false); onSlider(); });
+
+// ②平面の実験:光源の位置の角度
+const sphi = document.getElementById('sphi'), ophi = document.getElementById('ophi');
+sphi.addEventListener('input', () => {
+  state.phi = parseInt(sphi.value, 10);
+  ophi.value = state.phi + '°';
+  const el = codeEl.querySelector('.cl.dynphi code');
+  if (el) el.innerHTML = highlightJS(phiLineText());
+  updateReadout();
+  requestRender();
+});
+document.getElementById('light-reset').addEventListener('click', () => {
+  setSweep(false);
+  slx.value = 1; sly.value = 1; onSlider();
+});
+
+/* ---------- 光の自動往復 ---------- */
+let sweeping = false;
+const sweepBtn = document.getElementById('sweep');
+
+function sweepFrame(now) {
+  if (!sweeping) return;
+  const v = 2 * Math.sin(now / 1100);        // 約7秒で1往復、lx ∈ [-2, 2]
+  slx.value = v.toFixed(2);
+  state.lx = parseFloat(slx.value);
+  olx.value = state.lx.toFixed(2);
+  updateDynLine();
+  updateReadout();
+  requestRender();
+  requestAnimationFrame(sweepFrame);
+}
+function setSweep(on) {
+  if (sweeping === on) return;
+  sweeping = on;
+  sweepBtn.textContent = on ? '⏸ 往復を止める(S)' : '▶ 光を自動で往復(S)';
+  sweepBtn.setAttribute('aria-pressed', String(on));
+  if (on) requestAnimationFrame(sweepFrame);
+}
+sweepBtn.addEventListener('click', () => setSweep(!sweeping));
+
+/* ---------- マウス:ホバーとブラシ ---------- */
+function toWorld(ev) {
+  const r = view.getBoundingClientRect();
+  const { u, cx, cy } = viewXform();
+  const px = (ev.clientX - r.left) / r.width * RES;
+  const py = (ev.clientY - r.top) / r.height * RES;
+  return { x: (px - cx) / u, y: (cy - py) / u };
+}
+
+let brushing = false, brushDir = 1;
+const BRUSH_R = 0.30;
+
+function applyBrush(wx, wy, dir) {
+  const [lx, ly, lz] = lightVecNormalized();
+  const amt = 0.12 * dir;
+  const cellW = 2 * WORLD / (G - 1);
+  const rad = Math.ceil(BRUSH_R / cellW);
+  const cu = Math.round((wx + WORLD) / (2 * WORLD) * (G - 1));
+  const cv = Math.round((WORLD - wy) / (2 * WORLD) * (G - 1));
+  for (let v = Math.max(0, cv - rad); v <= Math.min(G - 1, cv + rad); v++) {
+    for (let u = Math.max(0, cu - rad); u <= Math.min(G - 1, cu + rad); u++) {
+      const gx = -WORLD + u / (G - 1) * 2 * WORLD;
+      const gy = WORLD - v / (G - 1) * 2 * WORLD;
+      const dx = gx - wx, dy = gy - wy;
+      const q = (dx * dx + dy * dy) / (BRUSH_R * BRUSH_R);
+      if (q >= 1) continue;
+      const fall = (1 - q) * (1 - q);
+      const k = (v * G + u) * 3;
+      edits[k]     += lx * amt * fall;
+      edits[k + 1] += ly * amt * fall;
+      edits[k + 2] += lz * amt * fall;
+      // 暴走防止:ズレの大きさを制限
+      const m = Math.hypot(edits[k], edits[k + 1], edits[k + 2]);
+      if (m > 2.5) { edits[k] *= 2.5 / m; edits[k + 1] *= 2.5 / m; edits[k + 2] *= 2.5 / m; }
+    }
+  }
+}
+
+view.addEventListener('pointerdown', ev => {
+  if (state.stage !== 8) return;
+  ev.preventDefault();
+  view.setPointerCapture(ev.pointerId);
+  brushing = true;
+  brushDir = (ev.shiftKey || ev.button === 2) ? -1 : 1;
+  const w = toWorld(ev);
+  applyBrush(w.x, w.y, brushDir);
+  requestRender();
+});
+view.addEventListener('pointermove', ev => {
+  if (state.stage === 2) { state.hover = null; return; }
+  const w = toWorld(ev);
+  state.hover = (w.x * w.x + w.y * w.y <= 1) ? w : null;
+  if (brushing && state.stage === 8) applyBrush(w.x, w.y, brushDir);
+  updateReadout();
+  requestRender();
+});
+view.addEventListener('pointerup', () => { brushing = false; });
+view.addEventListener('pointerleave', () => {
+  state.hover = null; brushing = false;
+  updateReadout(); requestRender();
+});
+view.addEventListener('contextmenu', ev => ev.preventDefault());
+
+document.getElementById('brush-reset').addEventListener('click', () => {
+  edits.fill(0); requestRender();
+});
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '8') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+  else if (ev.key === 'r' || ev.key === 'R') { edits.fill(0); requestRender(); }
+  else if ((ev.key === 's' || ev.key === 'S') && state.stage !== 2) setSweep(!sweeping);
+  else if (ev.key === 'v' || ev.key === 'V') { state.overlay = !state.overlay; syncOverlayBtn(); requestRender(); }
+  else if ((ev.key === 'f' || ev.key === 'F') && (state.stage === 4 || state.stage === 5)) setFormulaStep(state.formulaStep + 1);
+});
+
+window.addEventListener('resize', requestRender);
+
+/* ---------- 起動 ---------- */
+setStage(1);
+</script>
