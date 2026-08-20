@@ -3,52 +3,82 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>コンピュータグラフィックス 実演デモ</title>
+<title>コンピュータグラフィックス 実演デモ(全15回)</title>
 <style>
   :root{
     --bg:#0E1219; --panel:#151B26; --line:#26304A;
-    --text:#E9EDF5; --sub:#93A0B4; --amber:#FFB45C; --green:#46D99A;
+    --text:#E9EDF5; --sub:#93A0B4; --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A;
   }
   *{box-sizing:border-box; margin:0; padding:0}
   body{
     background:var(--bg); color:var(--text); min-height:100vh;
     font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
     display:flex; flex-direction:column; align-items:center;
-    padding:48px 24px; gap:28px;
+    padding:44px 20px 60px; gap:30px;
   }
-  h1{font-size:24px; letter-spacing:.02em}
+  h1{font-size:24px; letter-spacing:.02em; text-align:center}
   h1 small{display:block; font-size:12.5px; font-weight:500; color:var(--sub); margin-top:6px; letter-spacing:.08em}
-  .cards{display:flex; flex-wrap:wrap; gap:20px; justify-content:center; max-width:960px}
+  section{width:100%; max-width:1080px}
+  h2{
+    font-size:13px; letter-spacing:.16em; color:var(--sub); font-weight:600;
+    margin:18px 0 12px; padding-left:2px;
+  }
+  h2 b{color:var(--amber)}
+  .cards{display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px}
   a.card{
-    display:block; width:420px; max-width:100%;
-    background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    padding:22px 24px; text-decoration:none; color:var(--text);
+    display:block; background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; text-decoration:none; color:var(--text);
     transition:border-color .15s, transform .15s;
   }
   a.card:hover{border-color:var(--amber); transform:translateY(-2px)}
-  .card .tag{font-size:11.5px; letter-spacing:.14em; color:var(--amber); font-weight:600}
-  .card.motion .tag{color:var(--green)}
-  .card h2{font-size:19px; margin:8px 0 10px}
-  .card p{font-size:13.5px; color:var(--sub); line-height:1.75}
-  footer{font-size:12px; color:var(--sub); margin-top:8px}
+  .card .no{font-size:11px; letter-spacing:.12em; color:var(--amber); font-weight:600}
+  .card h3{font-size:15.5px; margin:5px 0 6px; line-height:1.45}
+  .card p{font-size:12px; color:var(--sub); line-height:1.65}
+  footer{font-size:12px; color:var(--sub); text-align:center; line-height:1.8}
 </style>
 </head>
 <body>
-  <h1>コンピュータグラフィックス 実演デモ<small>空間・光・時間を数式で書き、計算で絵に戻す</small></h1>
-  <div class="cards">
-    <a class="card" href="shading.html">
-      <span class="tag">光 — シェーディング</span>
-      <h2>内積ひとつで絵が変わる</h2>
-      <p>壊れた球の症状から、内積の定義 |a||b|cosθ で原因を診断して修正する。
-         その先で、同じ数式のまま物理をわざと外してアニメの陰を作り、法線を手で彫る。</p>
-    </a>
-    <a class="card motion" href="motion.html">
-      <span class="tag">時間 — モーション</span>
-      <h2>フィルタひとつで動きが変わる</h2>
-      <p>等速直線運動から始めて、重力・跳ね返りと物理を積み上げ、
-         誇張フィルタ(Wang et al., SIGGRAPH 2006)・つぶしと伸ばし・コマ打ちでアニメの動きへ。</p>
-    </a>
-  </div>
-  <footer>ブラウザだけで動きます(インストール不要)。キー操作:数字キーでステージ切替、←→で前後。</footer>
+  <h1>コンピュータグラフィックス 実演デモ<small>空間・光・時間を数式で書き、計算で絵に戻す — 全15回</small></h1>
+
+  <section>
+    <h2><b>第1部</b> 空間を数で書く</h2>
+    <div class="cards">
+      <a class="card" href="shading.html"><span class="no">第1回</span><h3>内積ひとつで絵が変わる</h3><p>壊れた球を、内積の定義で診断して直す。そのまま物理をわざと外すところまで。</p></a>
+      <a class="card" href="lec02.html"><span class="no">第2回</span><h3>画像とは、数の表</h3><p>絵を拡大するとマス目、マス目の中身は数。解像度と階調。</p></a>
+      <a class="card" href="lec03.html"><span class="no">第3回</span><h3>「ここ」を数字で言う</h3><p>座標とベクトル。足し算=移動。画面のy軸は逆さま。</p></a>
+      <a class="card" href="lec04.html"><span class="no">第4回</span><h3>動かす数学 — 行列</h3><p>拡大と回転を2×2の数で書く。行列は基準の矢印の行き先。</p></a>
+      <a class="card" href="lec05.html"><span class="no">第5回</span><h3>順番で絵が変わる</h3><p>回してから動かす?動かしてから回す?変換の合成と順序。</p></a>
+      <a class="card" href="lec06.html"><span class="no">第6回</span><h3>遠くのものは、なぜ小さい</h3><p>透視投影は「zで割る」だけ。正体は中学の相似。</p></a>
+    </div>
+  </section>
+
+  <section>
+    <h2><b>第2部</b> 光を数で書く</h2>
+    <div class="cards">
+      <a class="card" href="lec07.html"><span class="no">第7回</span><h3>光を近づける、つやを足す</h3><p>点光源・距離減衰・鏡面反射。材質は係数の組。</p></a>
+      <a class="card" href="lec08.html"><span class="no">第8回</span><h3>光を1本ずつ追いかける</h3><p>レイトレーシングと影。円との交差は二次方程式の判別式。</p></a>
+      <a class="card" href="lec09.html"><span class="no">第9回</span><h3>物理を、わざと外す</h3><p>セルルックの段数、輪郭線、影色、そして法線を手で彫る。</p></a>
+      <a class="card" href="lec10.html"><span class="no">第10回</span><h3>明るさから、向きを当てる</h3><p>逆問題。1枚では決まらない。3枚撮って連立して解く。</p></a>
+    </div>
+  </section>
+
+  <section>
+    <h2><b>第3部</b> 時間を数で書く</h2>
+    <div class="cards">
+      <a class="card" href="motion.html"><span class="no">第11回</span><h3>フィルタひとつで動きが変わる</h3><p>等速→重力→跳ね返り→誇張フィルタ→つぶしと伸ばし→コマ打ち。</p></a>
+      <a class="card" href="lec12.html"><span class="no">第12回</span><h3>気持ちいい動きの正体</h3><p>補間とイージング。ベジェ曲線を自分で曲げる。</p></a>
+      <a class="card" href="lec13.html"><span class="no">第13回</span><h3>形を覚えている点たち</h3><p>やわらかい変形 — Shape Matching。かたさは1つの数。</p></a>
+    </div>
+  </section>
+
+  <section>
+    <h2><b>第4部</b> データと社会</h2>
+    <div class="cards">
+      <a class="card" href="lec14.html"><span class="no">第14回</span><h3>測れない面がある</h3><p>スキャンした点群を回すと、穴。3次元データはなぜ足りないか。</p></a>
+      <a class="card" href="lec15.html"><span class="no">第15回</span><h3>半年ぶんを、1画面に</h3><p>空間・光・時間の数式ぜんぶで、跳ねるボールを描く総集編。</p></a>
+    </div>
+  </section>
+
+  <footer>ブラウザだけで動きます(インストール不要・スマホ対応)。<br>各デモ:上部のボタンでステージ切替。PCでは数字キー・←→も使えます。</footer>
 </body>
 </html>

@@ -1,0 +1,719 @@
+<title>物理を、わざと外す — CG第9回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1; cursor:crosshair; touch-action:none}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .sw-dot{
+    display:inline-block; width:12px; height:12px; border-radius:3px;
+    margin-right:7px; vertical-align:-1px; border:1px solid rgba(255,255,255,.25);
+  }
+  .brush-hint{font-size:13px; color:var(--sub)}
+  .brush-hint b{color:var(--text); font-weight:600}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10.5px}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+    .brush-hint{font-size:12px}
+  }
+</style>
+
+<header>
+  <h1>物理を、わざと外す<small>コンピュータグラフィックス 第9回 実演 — セルルック・輪郭線・法線編集</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>5</kbd> / <kbd>←</kbd><kbd>→</kbd> で切替</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel" id="light-panel">
+      <div class="panel-head"><span class="dot"></span>光の向き(長さ1に揃えて使う)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="slx">左右(lx)</label>
+          <input type="range" id="slx" min="-2" max="2" step="0.05" value="1">
+          <output id="olx">1.00</output>
+        </div>
+        <div class="ctl-row">
+          <label for="sly">上下(ly)</label>
+          <input type="range" id="sly" min="-2" max="2" step="0.05" value="1">
+          <output id="oly">1.00</output>
+        </div>
+        <div class="ctl-row">
+          <button class="btn" id="sweep" aria-pressed="false">▶ 光を自動で往復(S)</button>
+          <button class="btn" id="light-reset">右上 (1, 1, 1) に戻す</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="cel-panel">
+      <div class="panel-head"><span class="dot"></span>セルルックの段数</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="scel">段数 n</label>
+          <input type="range" id="scel" min="2" max="5" step="1" value="2">
+          <output id="ocel">2段</output>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="out-panel">
+      <div class="panel-head"><span class="dot"></span>輪郭線のしきい値(N・V がこれ未満なら線)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="sout">しきい値</label>
+          <input type="range" id="sout" min="0.05" max="0.60" step="0.01" value="0.30">
+          <output id="oout">0.30</output>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="shadow-panel">
+      <div class="panel-head"><span class="dot"></span>影色 — 暗い側を、どの色に寄せるか</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <button class="btn shadow-btn active" data-idx="0"><span class="sw-dot" style="background:#7069B0"></span>青紫の影(夜・室内)</button>
+          <button class="btn shadow-btn" data-idx="1"><span class="sw-dot" style="background:#92604A"></span>茶色の影(夕方)</button>
+          <button class="btn shadow-btn" data-idx="2"><span class="sw-dot" style="background:#66866E"></span>緑がかった影(木かげ)</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="brush-panel">
+      <div class="panel-head"><span class="dot"></span>陰を彫る — 法線の手編集</div>
+      <div class="controls">
+        <div class="brush-hint">球を<b>ドラッグ</b>:陰を消す(法線を光へ向ける) / <b>Shift+ドラッグ</b>:陰を足す(光から背ける)</div>
+        <div class="ctl-row">
+          <button class="btn" id="brush-reset">編集をリセット(R)</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — ピクセルごとに実行される関数
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = {
+  stage: 1,
+  lx: 1, ly: 1,       // 光の向き(使う前に長さ1へ)
+  celN: 2,            // ②セルルックの段数
+  outT: 0.30,         // ③輪郭線のしきい値(N・V < outT なら線)
+  shadowIdx: 0,       // ④影色プリセット
+  hover: null,        // {x, y}(球面ワールド座標)
+  fontIdx: 1,
+};
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 写実',       note:'第1回の拡散シェーディングそのまま。物理的には正しく、明るさはなめらかに変わる。正しい——でも、アニメの絵ではない。ここから、わざと物理を外していく。' },
+  { label:'② 段数を選ぶ',  note:'なめらかな明るさを n 段の階段に量子化(floor で切り捨てて、最上段が 1.0 になるよう割り直す)。2段は硬い、4段でアニメ塗り。境界線は cosθ の等高線。' },
+  { label:'③ 輪郭線',      note:'線画はどこから来るか:面がこちらを向かなくなる場所。視線 V との内積 N・V が小さいふちを黒く塗ると、輪郭線が生まれる。しきい値で線の太さが変わる。' },
+  { label:'④ 陰に色を差す', note:'アニメの影は黒ではない。暗部を影色との補間で塗る——乗算ではなく、影色と素の色の「間」を d で混ぜる。影色ひとつで、時間帯や空気が変わる。' },
+  { label:'⑤ 陰を彫る',    note:'最後は手で直す。球をドラッグして陰を消し、Shift+ドラッグで陰を足す(R でリセット)。美術の判断を、矢印(法線)の向きに翻訳する。' },
+];
+
+/* ---------- 法線編集グリッド ---------- */
+const G = 110;                      // グリッド解像度
+const edits = new Float32Array(G * G * 3);   // 法線に足すズレ (x,y,z)
+const WORLD = 1.08;                 // 描画範囲 [-WORLD, WORLD]
+
+function sampleEdit(x, y, out) {
+  const u = (x + WORLD) / (2 * WORLD) * (G - 1);
+  const v = (WORLD - y) / (2 * WORLD) * (G - 1);
+  const u0 = Math.max(0, Math.min(G - 2, Math.floor(u)));
+  const v0 = Math.max(0, Math.min(G - 2, Math.floor(v)));
+  const fu = u - u0, fv = v - v0;
+  for (let c = 0; c < 3; c++) {
+    const a = edits[(v0 * G + u0) * 3 + c],     b = edits[(v0 * G + u0 + 1) * 3 + c];
+    const d = edits[((v0 + 1) * G + u0) * 3 + c], e = edits[((v0 + 1) * G + u0 + 1) * 3 + c];
+    out[c] = (a * (1 - fu) + b * fu) * (1 - fv) + (d * (1 - fu) + e * fu) * fv;
+  }
+}
+
+/* ---------- 光ベクトル(常に長さ1) ---------- */
+function lightVecNormalized() {
+  const len = Math.hypot(state.lx, state.ly, 1) || 1;
+  return [state.lx / len, state.ly / len, 1 / len];
+}
+
+/* ---------- 色 ---------- */
+const BASE = [242, 200, 158];       // 素の色 #F2C89E
+const INK  = [30, 36, 52];          // 輪郭線の色(ほぼ黒)
+const BG   = [255, 255, 255];       // 紙のような白
+const SHADOWS = [
+  { name:'青紫の影',     c:[112, 105, 176] },
+  { name:'茶色の影',     c:[146,  96,  74] },
+  { name:'緑がかった影', c:[102, 134, 110] },
+];
+
+/* ---------- 球のレンダリング(ソフトウェア) ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520;
+const img = vctx.createImageData(RES, RES);
+const _e = new Float32Array(3);
+
+function normalAt(x, y) {
+  const r2 = x * x + y * y;
+  if (r2 > 1) return null;
+  let nx = x, ny = y, nz = Math.sqrt(1 - r2);
+  if (state.stage >= 5) {
+    sampleEdit(x, y, _e);
+    nx += _e[0]; ny += _e[1]; nz += _e[2];
+    const n = Math.hypot(nx, ny, nz) || 1;
+    nx /= n; ny /= n; nz /= n;
+  }
+  return [nx, ny, nz];
+}
+
+function xform() {
+  return { u: RES / (2 * WORLD), cx: RES / 2, cy: RES / 2 };
+}
+
+// 明るさ d(0〜1)→ その画素の色。ステージに応じた「わざと外す」加工込み
+function shadeColor(d) {
+  if (state.stage >= 4) {
+    const sh = SHADOWS[state.shadowIdx].c;
+    return [sh[0] + (BASE[0] - sh[0]) * d,
+            sh[1] + (BASE[1] - sh[1]) * d,
+            sh[2] + (BASE[2] - sh[2]) * d];
+  }
+  return [BASE[0] * d, BASE[1] * d, BASE[2] * d];
+}
+
+function render() {
+  const [lx, ly, lz] = lightVecNormalized();
+  const data = img.data;
+  const { u, cx, cy } = xform();
+  const s = state.stage;
+  const n = state.celN, t = state.outT;
+  let i = 0;
+  for (let py = 0; py < RES; py++) {
+    const y = (cy - (py + 0.5)) / u;
+    for (let px = 0; px < RES; px++, i += 4) {
+      const x = ((px + 0.5) - cx) / u;
+      const r2 = x * x + y * y;
+      const cov = Math.max(0, Math.min(1, (1 - Math.sqrt(r2)) * u + 0.5));
+      if (cov <= 0) {
+        data[i] = BG[0]; data[i + 1] = BG[1]; data[i + 2] = BG[2]; data[i + 3] = 255;
+        continue;
+      }
+      const rr = Math.min(r2, 0.999999);
+      let nx = x, ny = y, nz = Math.sqrt(1 - rr);
+      if (s >= 5) {
+        sampleEdit(x, y, _e);
+        nx += _e[0]; ny += _e[1]; nz += _e[2];
+        const nl = Math.hypot(nx, ny, nz) || 1;
+        nx /= nl; ny /= nl; nz /= nl;
+      }
+      let d = Math.max(0, nx * lx + ny * ly + nz * lz);   // 拡散(第1回)
+      if (s >= 2) d = Math.min(n - 1, Math.floor(d * n)) / (n - 1);  // ②量子化
+      let col;
+      if (s >= 3 && nz < t) col = INK;                    // ③輪郭線
+      else col = shadeColor(d);                           // ④影色 or 素の色×d
+      data[i]     = col[0] * cov + BG[0] * (1 - cov);
+      data[i + 1] = col[1] * cov + BG[1] * (1 - cov);
+      data[i + 2] = col[2] * cov + BG[2] * (1 - cov);
+      data[i + 3] = 255;
+    }
+  }
+  vctx.putImageData(img, 0, 0);
+  // ホバー位置のマーカー
+  if (state.hover) {
+    const hx = cx + state.hover.x * u;
+    const hy = cy - state.hover.y * u;
+    vctx.strokeStyle = '#E0821F';
+    vctx.lineWidth = 2;
+    vctx.beginPath();
+    vctx.arc(hx, hy, 9, 0, Math.PI * 2);
+    vctx.stroke();
+  }
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+const fmt = v => (v >= 0 ? ' ' : '') + v.toFixed(2);
+const dynEls = {};   // dyn 行の <code> 要素(スライダー連動)
+
+function lightLineText() {
+  return `  const [lx, ly, lz] = 長さ1(${fmt(state.lx)}, ${fmt(state.ly)}, 1);  // ← スライダー`;
+}
+function celLineText() {
+  return `  const 段 = ${state.celN};                       // ← 段数スライダー`;
+}
+function outLineText() {
+  return `  if (nz < ${state.outT.toFixed(2)}) return 輪郭色;       // ← しきい値スライダー`;
+}
+function shadowLineText() {
+  return `  return 影色 + (素の色 - 影色) * d;   // 影色 = ${SHADOWS[state.shadowIdx].name}`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  add('// ピクセルごとに実行:面の向き(nx,ny,nz)と光から色を決める');
+  add('function 色(nx, ny, nz) {');
+  if (s >= 5) {
+    add('  // ★ 手で彫ったズレを法線に足す(美術の判断)', 'add');
+    add('  nx += 編集x;  ny += 編集y;  nz += 編集z;', 'add');
+    add('  [nx, ny, nz] = 長さ1(nx, ny, nz);       // 長さは 1 に戻す', 'add');
+    add('');
+  }
+  add('  // 光の向き(長さ1に揃えてから使う)');
+  add(lightLineText(), 'dyn dynlight');
+  add('');
+  add('  // 明るさ = cosθ(内積)— ここまでは物理に忠実');
+  add('  let d = Math.max(0, nx*lx + ny*ly + nz*lz);', s === 1 ? 'hl' : '');
+  if (s >= 2) {
+    add('');
+    add('  // ★ セルルック:d を 段 段の階段に量子化(最上段 = 1.0)', s === 2 ? 'add' : '');
+    add(celLineText(), (s === 2 ? 'add ' : '') + 'dyn dyncel');
+    add('  d = Math.min(段 - 1, Math.floor(d * 段)) / (段 - 1);', s === 2 ? 'add' : '');
+  }
+  if (s >= 3) {
+    add('');
+    add('  // ★ 輪郭線:視線 V=(0,0,1) との内積 N・V = nz が小さいふち', s === 3 ? 'add' : '');
+    add(outLineText(), (s === 3 ? 'add ' : '') + 'dyn dynout');
+  }
+  add('');
+  if (s >= 4) {
+    add('  // ★ 陰に色を差す:影色と素の色の「間」を d で混ぜる(乗算しない)', s === 4 ? 'add' : '');
+    add(shadowLineText(), (s === 4 ? 'add ' : '') + 'dyn dynshadow');
+  } else {
+    add('  return 素の色 * d;       // 暗い所は黒へ向かう');
+  }
+  add('}');
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynEls.light  = codeEl.querySelector('.cl.dynlight code');
+  dynEls.cel    = codeEl.querySelector('.cl.dyncel code');
+  dynEls.out    = codeEl.querySelector('.cl.dynout code');
+  dynEls.shadow = codeEl.querySelector('.cl.dynshadow code');
+}
+
+// スライダー操作中は該当行だけ書き換える(全再構築だと追加行の点滅が再発火するため)
+function updateDyn(which) {
+  if (which === 'light'  && dynEls.light)  dynEls.light.innerHTML  = highlightJS(lightLineText());
+  if (which === 'cel'    && dynEls.cel)    dynEls.cel.innerHTML    = highlightJS(celLineText());
+  if (which === 'out'    && dynEls.out)    dynEls.out.innerHTML    = highlightJS(outLineText());
+  if (which === 'shadow' && dynEls.shadow) dynEls.shadow.innerHTML = highlightJS(shadowLineText());
+}
+
+/* ---------- 読み出し(ホバー) ---------- */
+const readout = document.getElementById('readout');
+
+function updateReadout() {
+  const s = state.stage;
+  const h = state.hover && normalAt(state.hover.x, state.hover.y);
+  if (!h) {
+    if (s === 1)      readout.innerHTML = '球の上にマウス(タッチ)を:その点の θ と明るさ。正しい——でも、アニメではない。';
+    else if (s === 2) readout.innerHTML = '段数スライダーを 2 → 4 へ。<b>2段は硬い、4段でアニメ塗り</b>。境界線は cosθ の等高線。';
+    else if (s === 3) readout.innerHTML = 'しきい値を上げると線が太る。線画は<b>面がこちらを向かなくなる場所</b>から生まれる。';
+    else if (s === 4) readout.innerHTML = `暗い側は黒ではなく<b>${SHADOWS[state.shadowIdx].name}</b>へ。真っ黒は、もうどこにも無い。`;
+    else              readout.innerHTML = '<b>ドラッグ</b>:陰を消す / <b>Shift+ドラッグ</b>:陰を足す / <b>R</b>:リセット。段の境界が彫った形に沿って動く。';
+    return;
+  }
+  const [lx, ly, lz] = lightVecNormalized();
+  const c = Math.max(-1, Math.min(1, h[0] * lx + h[1] * ly + h[2] * lz));
+  const th = Math.round(Math.acos(c) * 180 / Math.PI);
+  const d0 = Math.max(0, c);
+  if (s === 1) {
+    readout.innerHTML = `θ = <b>${th}°</b> 、 明るさ cosθ = <b>${d0.toFixed(2)}</b> — なめらかに変わる(写実)。`;
+    return;
+  }
+  const n = state.celN;
+  const band = Math.min(n - 1, Math.floor(d0 * n));
+  const q = band / (n - 1);
+  if (s === 2) {
+    readout.innerHTML = `cosθ = <b>${d0.toFixed(2)}</b> → ${band + 1}段目/${n}段 → 明るさ <b>${q.toFixed(2)}</b>(階段に切り捨て)。`;
+  } else if (s === 3) {
+    readout.innerHTML = h[2] < state.outT
+      ? `N・V = nz = <b>${h[2].toFixed(2)}</b> &lt; ${state.outT.toFixed(2)} → <b>輪郭線の上</b>(こちらを向いていない面)。`
+      : `N・V = nz = <b>${h[2].toFixed(2)}</b> ≥ ${state.outT.toFixed(2)} → 面はこちらを向いている(線にならない)。`;
+  } else {
+    readout.innerHTML = `cosθ = <b>${d0.toFixed(2)}</b> → ${n}段で明るさ <b>${q.toFixed(2)}</b>。0 に近いほど<b>${SHADOWS[state.shadowIdx].name}</b>に寄る(補間)。`;
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(5, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  document.getElementById('cel-panel').classList.toggle('hidden', state.stage < 2);
+  document.getElementById('out-panel').classList.toggle('hidden', state.stage < 3);
+  document.getElementById('shadow-panel').classList.toggle('hidden', state.stage < 4);
+  document.getElementById('brush-panel').classList.toggle('hidden', state.stage !== 5);
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+
+/* ---------- 再描画(フレーム間引き) ---------- */
+let pending = false;
+function requestRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => {
+    pending = false;
+    render();
+  });
+}
+
+/* ---------- スライダー ---------- */
+const slx = document.getElementById('slx'), sly = document.getElementById('sly');
+const olx = document.getElementById('olx'), oly = document.getElementById('oly');
+
+function onLight() {
+  state.lx = parseFloat(slx.value);
+  state.ly = parseFloat(sly.value);
+  olx.value = state.lx.toFixed(2);
+  oly.value = state.ly.toFixed(2);
+  updateDyn('light');
+  updateReadout();
+  requestRender();
+}
+slx.addEventListener('input', () => { setSweep(false); onLight(); });
+sly.addEventListener('input', () => { setSweep(false); onLight(); });
+document.getElementById('light-reset').addEventListener('click', () => {
+  setSweep(false);
+  slx.value = 1; sly.value = 1; onLight();
+});
+
+const scel = document.getElementById('scel'), ocel = document.getElementById('ocel');
+scel.addEventListener('input', () => {
+  state.celN = parseInt(scel.value, 10);
+  ocel.value = state.celN + '段';
+  updateDyn('cel');
+  updateReadout();
+  requestRender();
+});
+
+const sout = document.getElementById('sout'), oout = document.getElementById('oout');
+sout.addEventListener('input', () => {
+  state.outT = parseFloat(sout.value);
+  oout.value = state.outT.toFixed(2);
+  updateDyn('out');
+  updateReadout();
+  requestRender();
+});
+
+/* ---------- 影色プリセット ---------- */
+document.querySelectorAll('.shadow-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    state.shadowIdx = +b.dataset.idx;
+    document.querySelectorAll('.shadow-btn').forEach(x => x.classList.toggle('active', x === b));
+    updateDyn('shadow');
+    updateReadout();
+    requestRender();
+  });
+});
+
+/* ---------- 光の自動往復 ---------- */
+let sweeping = false;
+const sweepBtn = document.getElementById('sweep');
+
+function sweepFrame(now) {
+  if (!sweeping) return;
+  const v = 2 * Math.sin(now / 1100);        // 約7秒で1往復、lx ∈ [-2, 2]
+  slx.value = v.toFixed(2);
+  state.lx = parseFloat(slx.value);
+  olx.value = state.lx.toFixed(2);
+  updateDyn('light');
+  updateReadout();
+  requestRender();
+  requestAnimationFrame(sweepFrame);
+}
+function setSweep(on) {
+  if (sweeping === on) return;
+  sweeping = on;
+  sweepBtn.textContent = on ? '⏸ 往復を止める(S)' : '▶ 光を自動で往復(S)';
+  sweepBtn.setAttribute('aria-pressed', String(on));
+  if (on) requestAnimationFrame(sweepFrame);
+}
+sweepBtn.addEventListener('click', () => setSweep(!sweeping));
+
+/* ---------- ポインタ:ホバーとブラシ ---------- */
+function toWorld(ev) {
+  const r = view.getBoundingClientRect();
+  const { u, cx, cy } = xform();
+  const px = (ev.clientX - r.left) / r.width * RES;
+  const py = (ev.clientY - r.top) / r.height * RES;
+  return { x: (px - cx) / u, y: (cy - py) / u };
+}
+
+let brushing = false, brushDir = 1;
+const BRUSH_R = 0.30;
+
+function applyBrush(wx, wy, dir) {
+  const [lx, ly, lz] = lightVecNormalized();
+  const amt = 0.12 * dir;
+  const cellW = 2 * WORLD / (G - 1);
+  const rad = Math.ceil(BRUSH_R / cellW);
+  const cu = Math.round((wx + WORLD) / (2 * WORLD) * (G - 1));
+  const cv = Math.round((WORLD - wy) / (2 * WORLD) * (G - 1));
+  for (let v = Math.max(0, cv - rad); v <= Math.min(G - 1, cv + rad); v++) {
+    for (let u = Math.max(0, cu - rad); u <= Math.min(G - 1, cu + rad); u++) {
+      const gx = -WORLD + u / (G - 1) * 2 * WORLD;
+      const gy = WORLD - v / (G - 1) * 2 * WORLD;
+      const dx = gx - wx, dy = gy - wy;
+      const q = (dx * dx + dy * dy) / (BRUSH_R * BRUSH_R);
+      if (q >= 1) continue;
+      const fall = (1 - q) * (1 - q);
+      const k = (v * G + u) * 3;
+      edits[k]     += lx * amt * fall;
+      edits[k + 1] += ly * amt * fall;
+      edits[k + 2] += lz * amt * fall;
+      // 暴走防止:ズレの大きさを制限
+      const m = Math.hypot(edits[k], edits[k + 1], edits[k + 2]);
+      if (m > 2.5) { edits[k] *= 2.5 / m; edits[k + 1] *= 2.5 / m; edits[k + 2] *= 2.5 / m; }
+    }
+  }
+}
+
+view.addEventListener('pointerdown', ev => {
+  if (state.stage !== 5) return;
+  ev.preventDefault();
+  view.setPointerCapture(ev.pointerId);
+  brushing = true;
+  brushDir = (ev.shiftKey || ev.button === 2) ? -1 : 1;
+  const w = toWorld(ev);
+  applyBrush(w.x, w.y, brushDir);
+  requestRender();
+});
+view.addEventListener('pointermove', ev => {
+  const w = toWorld(ev);
+  state.hover = (w.x * w.x + w.y * w.y <= 1) ? w : null;
+  if (brushing && state.stage === 5) applyBrush(w.x, w.y, brushDir);
+  updateReadout();
+  requestRender();
+});
+view.addEventListener('pointerup', () => { brushing = false; });
+view.addEventListener('pointerleave', () => {
+  state.hover = null; brushing = false;
+  updateReadout(); requestRender();
+});
+view.addEventListener('contextmenu', ev => ev.preventDefault());
+
+document.getElementById('brush-reset').addEventListener('click', () => {
+  edits.fill(0); requestRender();
+});
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '5') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+  else if (ev.key === 'r' || ev.key === 'R') { edits.fill(0); requestRender(); }
+  else if (ev.key === 's' || ev.key === 'S') setSweep(!sweeping);
+});
+
+window.addEventListener('resize', requestRender);
+
+/* ---------- 起動 ---------- */
+setStage(1);
+</script>

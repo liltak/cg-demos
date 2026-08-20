@@ -1,0 +1,581 @@
+<title>形を覚えている点たち — CG第13回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11px; font-weight:500; color:var(--sub); letter-spacing:.04em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1; touch-action:none}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .brush-hint{font-size:13px; color:var(--sub)}
+  .brush-hint b{color:var(--text); font-weight:600}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10px; white-space:normal}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+    .brush-hint{font-size:12px}
+  }
+</style>
+
+<header>
+  <h1>形を覚えている点たち<small>第13回 — 変形:Shape Matching(Müller et al. 2005 “Meshless Deformations Based on Shape Matching”)</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>5</kbd> / <kbd>←</kbd><kbd>→</kbd> 切替 <kbd>Space</kbd> 再生/停止</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果 — 36個の質点と、床と壁</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>シミュレーションのコントロール</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <button class="btn" id="play-btn">⏸ 一時停止(Space)</button>
+          <button class="btn" id="restart-btn">↺ 最初から(R)</button>
+        </div>
+        <div class="ctl-row hidden" id="alpha-row">
+          <label for="sa">かたさ α</label>
+          <input type="range" id="sa" min="0.02" max="1" step="0.01" value="0.30">
+          <output id="oa">0.30</output>
+        </div>
+        <div class="brush-hint hidden" id="drag-hint">点を<b>ドラッグ</b>:最寄りの点をつかんで引っ張る。<b>離す</b>とぷるんと復元。</div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — ①形を覚える ②重心と回転を推定 ③目標へ引き戻す
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = {
+  stage: 1,
+  alpha: 0.30,       // かたさ(引き戻す割合)
+  playing: true,
+  fontIdx: 1,
+};
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① ただの点の集まり', note:'36個の点が、それぞれ勝手に落ちて跳ねるだけ。着地のたびに形が崩れて散らばる——点たちは、形をどこにも覚えていない。' },
+  { label:'② 重心へ引き戻す', note:'元の形(青い点線)を「いまの重心」に平行移動して目標にし、各点を α で引き戻す。形は保たれるが回転できない——傾いたまま、不自然に固まる。' },
+  { label:'③ 回転も推定する', note:'行列 A から「いちばん形が合う回転 θ」を取り出し、回した形を目標にする。転がり、傾き、ぷるんと戻る——これが Shape Matching 本体。' },
+  { label:'④ かたさを選ぶ', note:'α をスライダーで 0.02〜1.0。ゼリー ⇄ ほぼ剛体が、たった1つの数で切り替わる。' },
+  { label:'⑤ つついて遊ぶ', note:'点をドラッグでつかんで引っ張り、離すとぷるんと復元。形の記憶 = Shape Matching。ゲームのやわらか表現で実際に使われている。' },
+];
+
+/* ---------- シミュレーション ---------- */
+const RES = 520, DT = 1 / 120;                 // dt は 1/120 秒に固定(substep)
+const GRAV = 1500, REST = 0.35, FRICT = 0.96, DAMP = 0.999;
+const FLOOR = 492, WL = 16, WR = 504;          // 床と左右の壁
+const SIDE = 6, NP = SIDE * SIDE, SP = 24, RAD = 7;   // 6×6 = 36個、直径14px
+const CX0 = 248, CY0 = 140, ANG0 = -0.45;      // 少し回転させて落とす
+
+const px = new Float64Array(NP), py = new Float64Array(NP);
+const vx = new Float64Array(NP), vy = new Float64Array(NP);
+const qx = new Float64Array(NP), qy = new Float64Array(NP);     // 元の形(rest shape)
+const qrx = new Float64Array(NP), qry = new Float64Array(NP);   // q − q̄
+const gxA = new Float64Array(NP), gyA = new Float64Array(NP);   // 目標位置
+let theta = 0;                                  // 推定した回転(表示用)
+let grab = -1, mx = 0, my = 0;                  // つかみ中の点
+let acc = 0, lastNow = null;
+
+let seed = 1;
+function rand() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+
+function resetSim() {
+  seed = 123456789;
+  const c = Math.cos(ANG0), s = Math.sin(ANG0);
+  let k = 0;
+  for (let i = 0; i < SIDE; i++) {
+    for (let j = 0; j < SIDE; j++, k++) {
+      const lx = (j - (SIDE - 1) / 2) * SP;
+      const ly = (i - (SIDE - 1) / 2) * SP;
+      px[k] = CX0 + c * lx - s * ly;
+      py[k] = CY0 + s * lx + c * ly;
+      vx[k] = (rand() - 0.5) * 120;             // 小さなばらつき(毎回同じ乱数)
+      vy[k] = (rand() - 0.5) * 60;
+    }
+  }
+  // ① 元の形を覚える(rest shape)
+  let qcx = 0, qcy = 0;
+  for (let i = 0; i < NP; i++) { qx[i] = px[i]; qy[i] = py[i]; qcx += px[i]; qcy += py[i]; }
+  qcx /= NP; qcy /= NP;
+  for (let i = 0; i < NP; i++) { qrx[i] = qx[i] - qcx; qry[i] = qy[i] - qcy; }
+  theta = 0; grab = -1; acc = 0;
+}
+
+// ② いまの重心(と回転)を推定して、目標位置を作る
+function computeGoals() {
+  let cx = 0, cy = 0;
+  for (let i = 0; i < NP; i++) { cx += px[i]; cy += py[i]; }
+  cx /= NP; cy /= NP;
+  let cs = 1, sn = 0;
+  if (state.stage >= 3) {
+    let a11 = 0, a12 = 0, a21 = 0, a22 = 0;    // A = Σ (p−c)(q−q̄)ᵀ
+    for (let i = 0; i < NP; i++) {
+      const rx = px[i] - cx, ry = py[i] - cy;
+      a11 += rx * qrx[i]; a12 += rx * qry[i];
+      a21 += ry * qrx[i]; a22 += ry * qry[i];
+    }
+    theta = Math.atan2(a21 - a12, a11 + a22);  // 最適回転を2Dで抽出
+    cs = Math.cos(theta); sn = Math.sin(theta);
+  } else {
+    theta = 0;                                  // ②は平行移動だけ(R = 単位行列)
+  }
+  for (let i = 0; i < NP; i++) {
+    gxA[i] = cs * qrx[i] - sn * qry[i] + cx;   // 目標 = R·(q−q̄) + c
+    gyA[i] = sn * qrx[i] + cs * qry[i] + cy;
+  }
+}
+
+// ③ 各点を目標へ引き戻す
+function shapeMatch(dt) {
+  computeGoals();
+  const al = state.alpha;
+  for (let i = 0; i < NP; i++) {
+    const dx = gxA[i] - px[i], dy = gyA[i] - py[i];
+    vx[i] += dx * al / dt; vy[i] += dy * al / dt;
+    px[i] += dx * al;      py[i] += dy * al;
+  }
+}
+
+function pinGrabbed() {
+  if (grab < 0) return;
+  px[grab] = Math.min(WR - RAD, Math.max(WL + RAD, mx));
+  py[grab] = Math.min(FLOOR - RAD, Math.max(RAD, my));
+  vx[grab] = 0; vy[grab] = 0;
+}
+
+function step(dt) {
+  // まずは、ふつうの物理(重力+積分)
+  for (let i = 0; i < NP; i++) {
+    vy[i] += GRAV * dt;
+    px[i] += vx[i] * dt;
+    py[i] += vy[i] * dt;
+  }
+  if (state.stage >= 2) shapeMatch(dt);
+  // 床と壁:押し戻して反発
+  for (let i = 0; i < NP; i++) {
+    if (py[i] > FLOOR - RAD) { py[i] = FLOOR - RAD; if (vy[i] > 0) vy[i] = -vy[i] * REST; vx[i] *= FRICT; }
+    if (px[i] < WL + RAD) { px[i] = WL + RAD; if (vx[i] < 0) vx[i] = -vx[i] * REST; }
+    if (px[i] > WR - RAD) { px[i] = WR - RAD; if (vx[i] > 0) vx[i] = -vx[i] * REST; }
+    vx[i] *= DAMP; vy[i] *= DAMP;
+  }
+  pinGrabbed();
+}
+
+/* ---------- 描画 ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+
+// 外周の点の並び(目標の形をゴースト表示するため)
+const PERIM = (() => {
+  const list = [];
+  for (let j = 0; j < SIDE; j++) list.push(j);
+  for (let i = 1; i < SIDE; i++) list.push(i * SIDE + SIDE - 1);
+  for (let j = SIDE - 2; j >= 0; j--) list.push((SIDE - 1) * SIDE + j);
+  for (let i = SIDE - 2; i >= 1; i--) list.push(i * SIDE);
+  return list;
+})();
+
+function line(x0, y0, x1, y1) {
+  vctx.beginPath(); vctx.moveTo(x0, y0); vctx.lineTo(x1, y1); vctx.stroke();
+}
+
+function render() {
+  vctx.fillStyle = '#FFFFFF';
+  vctx.fillRect(0, 0, RES, RES);
+  // 箱:床と左右の壁
+  vctx.strokeStyle = '#C6CEDC'; vctx.lineWidth = 2.5;
+  line(WL, 26, WL, FLOOR);
+  line(WR, 26, WR, FLOOR);
+  vctx.strokeStyle = '#9AA6BA'; vctx.lineWidth = 3;
+  line(WL - 1, FLOOR, WR + 1, FLOOR);
+  // 目標の形(青い点線・②以降)
+  if (state.stage >= 2) {
+    computeGoals();
+    vctx.strokeStyle = 'rgba(43,127,212,.5)'; vctx.lineWidth = 1.6;
+    vctx.setLineDash([5, 4]);
+    vctx.beginPath();
+    for (let k = 0; k < PERIM.length; k++) {
+      const i = PERIM[k];
+      if (k === 0) vctx.moveTo(gxA[i], gyA[i]); else vctx.lineTo(gxA[i], gyA[i]);
+    }
+    vctx.closePath(); vctx.stroke();
+    vctx.setLineDash([]);
+  }
+  // 点たち
+  for (let i = 0; i < NP; i++) {
+    vctx.beginPath();
+    vctx.arc(px[i], py[i], RAD, 0, Math.PI * 2);
+    vctx.fillStyle = '#F2C89E'; vctx.fill();
+    vctx.strokeStyle = '#3A4560'; vctx.lineWidth = 2; vctx.stroke();
+  }
+  // つかみ中の点
+  if (grab >= 0) {
+    vctx.strokeStyle = '#E0821F'; vctx.lineWidth = 2.5;
+    vctx.beginPath(); vctx.arc(px[grab], py[grab], RAD + 4.5, 0, Math.PI * 2); vctx.stroke();
+  }
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+let dynA = null;
+
+function alphaLineText() {
+  return state.stage >= 4
+    ? `const α = ${state.alpha.toFixed(2)};   // ← スライダー(0.02 ゼリー ⇄ 1.0 ほぼ剛体)`
+    : `const α = ${state.alpha.toFixed(2)};   // かたさ(引き戻す割合)`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+  if (s >= 2) {
+    add('// ① 元の形を覚える(rest shape)', s === 2 ? 'add' : '');
+    add('q[i] = はじめの位置;   q̄ = q の重心;', s === 2 ? 'add' : '');
+    add('');
+  }
+  add('// 毎フレーム(dt = 1/120):まずは、ふつうの物理');
+  add('for (各点 i) {');
+  add('  v[i].y += 1500 * dt;              // 重力で速くなる', s === 1 ? 'hl' : '');
+  add('  p[i]   += v[i] * dt;              // そのぶん進む', s === 1 ? 'hl' : '');
+  add('}');
+  add('床・壁に当たったら、押し戻して v を反転(× 0.35);');
+  if (s >= 2) {
+    add('');
+    add(s >= 3 ? '// ② いまの重心と回転を推定' : '// ② いまの重心を推定', (s === 2 || s === 3) ? 'add' : '');
+    add('c = p の重心;', s === 2 ? 'add' : '');
+    if (s >= 3) {
+      add('A = Σ (p[i]−c)(q[i]−q̄)ᵀ;          // 2×2 の行列', s === 3 ? 'add' : '');
+      add('θ = atan2(A21−A12, A11+A22);       // いちばん形が合う回転角', s === 3 ? 'add' : '');
+      add('R = 回転行列(θ);', s === 3 ? 'add' : '');
+    }
+    add('');
+    add('// ③ 各点を目標へ引き戻す', s === 2 ? 'add' : '');
+    add(alphaLineText(), ((s === 2 || s === 4) ? 'add ' : '') + 'dyna');
+    add(s >= 3 ? 'goal[i] = R·(q[i]−q̄) + c;          // 回した元の形を、いまの重心へ'
+               : 'goal[i] = (q[i]−q̄) + c;            // 元の形を、いまの重心へ',
+        (s === 2 || s === 3) ? 'add' : '');
+    add('v[i] += (goal[i] − p[i]) * α / dt;', s === 2 ? 'add' : '');
+    add('p[i] += (goal[i] − p[i]) * α;', s === 2 ? 'add' : '');
+  }
+  if (s >= 5) {
+    add('');
+    add('// ★ つかんだ点は、マウスに従わせる(離すと ③ が引き戻す)', s === 5 ? 'add' : '');
+    add('if (つかみ中) { p[点] = マウス位置;  v[点] = 0; }', s === 5 ? 'add' : '');
+  }
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynA = codeEl.querySelector('.cl.dyna code');
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+
+function updateReadout() {
+  const s = state.stage;
+  if (s === 1) {
+    let mn = 1e9, mx2 = -1e9;
+    for (let i = 0; i < NP; i++) { mn = Math.min(mn, px[i]); mx2 = Math.max(mx2, px[i]); }
+    readout.innerHTML = `36 個が独立に運動中。横の広がり = <b>${Math.round(mx2 - mn)}px</b>(最初は約 160px)`;
+  } else if (s === 2) {
+    readout.innerHTML = `回転は推定しない(θ = 0° のまま)。α = <b>${state.alpha.toFixed(2)}</b> — 傾いたまま固まる。`;
+  } else {
+    const deg = Math.round(theta * 180 / Math.PI);
+    const head = s === 5 ? '点をつかんで引っ張る → 離すと復元。' : '';
+    readout.innerHTML = `${head}推定した回転 θ = <b>${deg}°</b> かたさ α = <b>${state.alpha.toFixed(2)}</b>`;
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(5, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  document.getElementById('alpha-row').classList.toggle('hidden', state.stage < 4);
+  document.getElementById('drag-hint').classList.toggle('hidden', state.stage !== 5);
+  view.style.cursor = state.stage === 5 ? 'grab' : 'default';
+  resetSim();
+  buildCode();
+  updateReadout();
+}
+
+/* ---------- コントロール ---------- */
+const playBtn = document.getElementById('play-btn');
+function setPlaying(on) {
+  state.playing = on;
+  playBtn.textContent = on ? '⏸ 一時停止(Space)' : '▶ 再生(Space)';
+  lastNow = null;
+}
+playBtn.addEventListener('click', () => setPlaying(!state.playing));
+document.getElementById('restart-btn').addEventListener('click', resetSim);
+
+const sa = document.getElementById('sa'), oa = document.getElementById('oa');
+sa.addEventListener('input', () => {
+  state.alpha = parseFloat(sa.value);
+  oa.value = state.alpha.toFixed(2);
+  if (dynA) dynA.innerHTML = highlightJS(alphaLineText());
+  updateReadout();
+});
+
+/* ---------- ドラッグ(⑤:pointer capture) ---------- */
+function toCanvas(ev) {
+  const r = view.getBoundingClientRect();
+  return { x: (ev.clientX - r.left) / r.width * RES, y: (ev.clientY - r.top) / r.height * RES };
+}
+view.addEventListener('pointerdown', ev => {
+  if (state.stage !== 5) return;
+  ev.preventDefault();
+  const p = toCanvas(ev);
+  let best = -1, bd = 80 * 80;                 // 最寄りの点(80px以内)
+  for (let i = 0; i < NP; i++) {
+    const d = (px[i] - p.x) * (px[i] - p.x) + (py[i] - p.y) * (py[i] - p.y);
+    if (d < bd) { bd = d; best = i; }
+  }
+  if (best < 0) return;
+  grab = best;
+  mx = p.x; my = p.y;
+  view.setPointerCapture(ev.pointerId);
+  view.style.cursor = 'grabbing';
+  pinGrabbed();
+});
+view.addEventListener('pointermove', ev => {
+  if (grab < 0) return;
+  const p = toCanvas(ev);
+  mx = p.x; my = p.y;
+  pinGrabbed();
+});
+function release() {
+  grab = -1;
+  view.style.cursor = state.stage === 5 ? 'grab' : 'default';
+}
+view.addEventListener('pointerup', release);
+view.addEventListener('pointercancel', release);
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '5') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+  else if (ev.key === ' ') { ev.preventDefault(); setPlaying(!state.playing); }
+  else if (ev.key === 'r' || ev.key === 'R') resetSim();
+});
+
+/* ---------- メインループ(dt 固定・substep) ---------- */
+function tick(now) {
+  if (state.playing) {
+    if (lastNow !== null) acc += Math.min(0.05, (now - lastNow) / 1000);
+    lastNow = now;
+    while (acc >= DT) { step(DT); acc -= DT; }
+  } else {
+    lastNow = null;
+  }
+  render();
+  updateReadout();
+  requestAnimationFrame(tick);
+}
+
+/* ---------- 起動 ---------- */
+setStage(1);
+setPlaying(true);
+requestAnimationFrame(tick);
+</script>

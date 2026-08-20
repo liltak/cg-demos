@@ -1,0 +1,555 @@
+<title>遠くのものは、なぜ小さい — CG第6回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1; cursor:grab; touch-action:none}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .ctl-hint{font-size:13px; color:var(--sub)}
+  .ctl-hint b{color:var(--text); font-weight:600}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10.5px}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+    .ctl-hint{font-size:12px}
+  }
+</style>
+
+<header>
+  <h1>遠くのものは、なぜ小さい<small>コンピュータグラフィックス 第6回 実演 — 3次元とカメラ</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>4</kbd> / <kbd>←</kbd><kbd>→</kbd> で切替</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果 — 箱2つ(近・遠)と床。ドラッグでカメラを回す</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel" id="cam-panel">
+      <div class="panel-head"><span class="dot"></span>カメラの向き</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="syaw">ヨー角 ψ</label>
+          <input type="range" id="syaw" min="-35" max="35" step="1" value="8">
+          <output id="oyaw">8°</output>
+        </div>
+        <div class="ctl-row">
+          <button class="btn" id="yaw-reset">正面 (0°) に戻す</button>
+          <span class="ctl-hint">canvas の上を<b>ドラッグ</b>しても回せます</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="f-panel">
+      <div class="panel-head"><span class="dot"></span>焦点距離 f(広角 ⇄ 望遠)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="sf">焦点距離 f</label>
+          <input type="range" id="sf" min="120" max="600" step="10" value="300">
+          <output id="of">300</output>
+        </div>
+        <div class="ctl-row">
+          <button class="btn" id="f-wide">広角 (f=150)</button>
+          <button class="btn" id="f-std">標準 (f=300)</button>
+          <button class="btn" id="f-tele">望遠 (f=550)</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — 頂点ごとに実行される投影
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = { stage: 1, yaw: 8, f: 300, fontIdx: 1 };
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 奥行きを捨てる',
+    note:'x と y をそのまま使い、z を捨てて描く(平行投影)。近くの箱も遠くの箱も同じ大きさ——ドラッグで回しても、どちらが手前か分からない。床は1本の線につぶれている。' },
+  { label:'② 割り算ひとつ',
+    note:'座標を z で割る——追加はこの1行だけ(透視投影)。遠い箱が小さくなり、床が奥へ広がる。世界のデータは何も変えていない。割り算ひとつ。' },
+  { label:'③ 焦点距離 f',
+    note:'f は目からスクリーンまでの距離。小さい f = 広角(パースが強い・箱がぐっと縮む)、大きい f = 望遠(平行投影の見え方に近づく)。' },
+  { label:'④ なぜ割り算か:相似',
+    note:'右下の側面図:目→スクリーン(距離 f)の三角形と、目→物体(距離 z)の三角形は相似。縮む倍率 = 相似比 = f/z。中学の相似が、カメラの正体。' },
+];
+
+/* ---------- 3D の世界(箱2つ + 床グリッド) ---------- */
+const EYE_H = 1.1;      // 目の高さ
+const LOOK_Z = 6.5;     // 注視点(この奥行きを中心にカメラが回る)
+const K_PARA = 80;      // 平行投影の倍率
+const CXS = 260, CYS = 260;
+
+function cubeEdges(cx, cy, cz, h) {
+  const v = [];
+  for (let i = 0; i < 8; i++) {
+    v.push([cx + (i & 1 ? h : -h), cy + (i & 2 ? h : -h), cz + (i & 4 ? h : -h)]);
+  }
+  const E = [[0,1],[1,3],[3,2],[2,0],[4,5],[5,7],[7,6],[6,4],[0,4],[1,5],[3,7],[2,6]];
+  return E.map(e => [v[e[0]], v[e[1]]]);
+}
+const NEAR_C = [-0.8, 0.55, 4.5], FAR_C = [0.8, 0.55, 9.0];
+const nearCube = cubeEdges(...NEAR_C, 0.55);
+const farCube = cubeEdges(...FAR_C, 0.55);
+
+const floorLines = [];
+for (let x = -3; x <= 3; x++) floorLines.push([[x, 0, 2], [x, 0, 12]]);
+for (let z = 2; z <= 12; z++) floorLines.push([[-3, 0, z], [3, 0, z]]);
+
+/* ---------- 投影(表示コードと同じ計算) ---------- */
+function camSpace(p) {
+  // ヨー回転:注視点 (0, ・, LOOK_Z) のまわりでカメラを左右に振る
+  const r = state.yaw * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+  const dz = p[2] - LOOK_Z;
+  return [p[0] * c - dz * s, p[1] - EYE_H, p[0] * s + dz * c + LOOK_Z];
+}
+function project(p) {
+  const [x, y, z] = camSpace(p);
+  if (z < 0.5) return null;                       // カメラの後ろは描かない
+  if (state.stage === 1) return [CXS + x * K_PARA, CYS - y * K_PARA];
+  return [CXS + x * state.f / z, CYS - y * state.f / z];   // ★ z で割る
+}
+function zOf(p) { return camSpace(p)[2]; }
+
+/* ---------- 描画 ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520;
+
+function haloText(ctx, text, x, y, color) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+function drawEdges(edges, color, lw) {
+  vctx.strokeStyle = color; vctx.lineWidth = lw;
+  for (const [p, q] of edges) {
+    const a = project(p), b = project(q);
+    if (!a || !b) continue;
+    vctx.beginPath(); vctx.moveTo(a[0], a[1]); vctx.lineTo(b[0], b[1]); vctx.stroke();
+  }
+}
+function labelCube(center, h, text, color) {
+  const t = project([center[0], center[1] + h + 0.25, center[2]]);
+  if (!t) return;
+  vctx.font = '14px sans-serif'; vctx.textAlign = 'center';
+  haloText(vctx, text, t[0], t[1], color);
+}
+
+function render() {
+  vctx.fillStyle = '#FFFFFF';
+  vctx.fillRect(0, 0, RES, RES);
+  drawEdges(floorLines, '#C9D2DE', 1.2);
+  drawEdges(farCube, '#2B7FD4', 2.5);
+  drawEdges(nearCube, '#E0821F', 2.5);
+  labelCube(FAR_C, 0.55, '遠 (z=' + zOf(FAR_C).toFixed(1) + ')', '#2B7FD4');
+  labelCube(NEAR_C, 0.55, '近 (z=' + zOf(NEAR_C).toFixed(1) + ')', '#C06E10');
+  if (state.stage === 4) drawSimilar();
+}
+
+/* ---------- ④ 側面図:相似の三角形 ---------- */
+function drawSimilar() {
+  const bx = 250, by = 352, bw = 256, bh = 154;
+  vctx.fillStyle = 'rgba(255,255,255,.96)';
+  vctx.fillRect(bx, by, bw, bh);
+  vctx.strokeStyle = '#3A4560'; vctx.lineWidth = 1.5;
+  vctx.strokeRect(bx, by, bw, bh);
+
+  const zn = zOf(NEAR_C);
+  const ex = bx + 18, y0 = by + bh - 36;    // 目の位置と、視線の軸
+  const kz = 15;                            // 奥行き 1 あたりのピクセル
+  const zo = ex + zn * kz;                  // 物体(近くの箱)の位置
+  const ds = ex + state.f * 0.22;           // スクリーンの位置(f に比例)
+  const ho = 46;                            // 物体の高さ(図の上での大きさ)
+  const rx = Math.max(zo, ds) + 10;         // 視線(光線)の先端
+
+  // 視線の軸
+  vctx.strokeStyle = '#9AA5B8'; vctx.lineWidth = 1;
+  vctx.beginPath(); vctx.moveTo(ex, y0); vctx.lineTo(bx + bw - 8, y0); vctx.stroke();
+
+  // 大きい三角形(目→物体)
+  vctx.fillStyle = 'rgba(224,130,31,.12)';
+  vctx.beginPath(); vctx.moveTo(ex, y0); vctx.lineTo(zo, y0); vctx.lineTo(zo, y0 - ho); vctx.closePath(); vctx.fill();
+  // 小さい三角形(目→スクリーン)
+  const hs = ho * (ds - ex) / (zo - ex);
+  vctx.fillStyle = 'rgba(43,127,212,.16)';
+  vctx.beginPath(); vctx.moveTo(ex, y0); vctx.lineTo(ds, y0); vctx.lineTo(ds, y0 - hs); vctx.closePath(); vctx.fill();
+
+  // 光線(目 → 物体のてっぺん、必要ならその先へ)
+  vctx.strokeStyle = '#3A4560'; vctx.lineWidth = 1.3;
+  vctx.beginPath(); vctx.moveTo(ex, y0);
+  vctx.lineTo(rx, y0 - ho * (rx - ex) / (zo - ex)); vctx.stroke();
+
+  // 物体(橙の縦棒)とスクリーン(青の縦線)
+  vctx.strokeStyle = '#E0821F'; vctx.lineWidth = 4;
+  vctx.beginPath(); vctx.moveTo(zo, y0); vctx.lineTo(zo, y0 - ho); vctx.stroke();
+  vctx.strokeStyle = '#2B7FD4'; vctx.lineWidth = 2;
+  vctx.beginPath(); vctx.moveTo(ds, y0 + 8); vctx.lineTo(ds, by + 26); vctx.stroke();
+
+  // スクリーン上の像(赤い点)
+  vctx.fillStyle = '#D64545';
+  vctx.beginPath(); vctx.arc(ds, y0 - hs, 3.5, 0, Math.PI * 2); vctx.fill();
+
+  // 目とラベル
+  vctx.fillStyle = '#3A4560';
+  vctx.beginPath(); vctx.arc(ex, y0, 4, 0, Math.PI * 2); vctx.fill();
+  vctx.font = '12px sans-serif'; vctx.textAlign = 'center';
+  haloText(vctx, '目', ex, y0 + 16, '#3A4560');
+  haloText(vctx, 'スクリーン', ds, by + 20, '#2B7FD4');
+  haloText(vctx, '物体', zo, y0 - ho - 6, '#C06E10');
+  vctx.font = '11px ui-monospace, Menlo, monospace';
+  haloText(vctx, '← f →', (ex + ds) / 2, y0 + 30, '#2B7FD4');
+  haloText(vctx, '←──── z ────→', (ex + zo) / 2, by + bh - 6, '#C06E10');
+  vctx.font = '12.5px ui-monospace, Menlo, monospace'; vctx.textAlign = 'left';
+  haloText(vctx, `相似比 = f/z = ${state.f}/${zn.toFixed(1)} = ${(state.f / zn).toFixed(0)}`, bx + 10, by + 40, '#3A4560');
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+
+function yawLineText() {
+  return `const ψ = ${state.yaw};                 // ← カメラの向き(ドラッグ / スライダー)`;
+}
+function fLineText() {
+  return `const f = ${state.f};              // ` + (state.stage >= 3 ? '← スライダー:小 = 広角、大 = 望遠' : '焦点距離(目からスクリーンまで)');
+}
+function ratioLineText() {
+  const zn = zOf(NEAR_C), zf = zOf(FAR_C);
+  return `//    近くの箱 f/z = ${state.f}/${zn.toFixed(1)} = ${(state.f / zn).toFixed(0)}    遠くの箱 = ${(state.f / zf).toFixed(0)}`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  add('// 世界の点 (x, y, z) を、画面の点にする');
+  add(yawLineText(), 'dynyaw');
+  add('[x, z] = ヨー回転(x, z, ψ);    // カメラを左右に振る');
+  add('y = y - 1.1;                  // 目の高さのぶん、下げる');
+  add('');
+  if (s === 1) {
+    add('// 平行投影:z を見ない');
+    add('画面x = 260 + x * 80;', 'hl');
+    add('画面y = 260 - y * 80;         // ← z がどこにも出てこない', 'hl');
+    return L;
+  }
+  add(fLineText(), s === 3 ? 'add dynf' : 'dynf');
+  add('');
+  add('// ★ 透視投影:z で割る。①からの追加はこれだけ', s === 2 ? 'add' : '');
+  add('画面x = 260 + x * f / z;', s === 2 ? 'add' : 'hl');
+  add('画面y = 260 - y * f / z;      // 遠い(z が大きい)ほど小さく', s === 2 ? 'add' : '');
+  if (s === 4) {
+    add('');
+    add('// ★ なぜ割り算?— 目→スクリーン(f)と目→物体(z)の三角形は相似', 'add');
+    add('//    画面での大きさ = 実際の大きさ × f / z(相似比)', 'add');
+    add(ratioLineText(), 'add dynr');
+  }
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+}
+
+// スライダー操作中は dyn の行だけ書き換える(全再構築だと追加行の点滅が再発火するため)
+const DYN_LINES = { dynyaw: yawLineText, dynf: fLineText, dynr: ratioLineText };
+function updateDynLines() {
+  for (const k in DYN_LINES) {
+    const el = codeEl.querySelector('.cl.' + k + ' code');
+    if (el) el.innerHTML = highlightJS(DYN_LINES[k]());
+  }
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+
+function updateReadout() {
+  const s = state.stage;
+  const zn = zOf(NEAR_C), zf = zOf(FAR_C);
+  if (s === 1) {
+    const w = Math.round(2 * 0.55 * K_PARA);
+    readout.innerHTML = `近くの箱も遠くの箱も <b>${w}px</b> — 同じ大きさ。どちらが手前か、絵からは分からない。`;
+  } else if (s === 2 || s === 3) {
+    const wn = Math.round(2 * 0.55 * state.f / zn);
+    const wf = Math.round(2 * 0.55 * state.f / zf);
+    readout.innerHTML = `近くの箱 <b>${wn}px</b> / 遠くの箱 <b>${wf}px</b>(z = ${zn.toFixed(1)} と ${zf.toFixed(1)})。f/z 倍に縮む。`;
+  } else {
+    readout.innerHTML = `相似比:近 f/z = ${state.f}/${zn.toFixed(1)} = <b>${(state.f / zn).toFixed(0)}</b>、遠 = <b>${(state.f / zf).toFixed(0)}</b>(1m が何 px に見えるか)。`;
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(4, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  document.getElementById('f-panel').classList.toggle('hidden', state.stage < 3);
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+
+/* ---------- 再描画(フレーム間引き) ---------- */
+let pending = false;
+function requestRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => { pending = false; render(); });
+}
+
+/* ---------- スライダー ---------- */
+const syaw = document.getElementById('syaw'), oyaw = document.getElementById('oyaw');
+const sf = document.getElementById('sf'), of = document.getElementById('of');
+
+function setYaw(v) {
+  state.yaw = Math.max(-35, Math.min(35, Math.round(v)));
+  syaw.value = state.yaw;
+  oyaw.value = state.yaw + '°';
+  updateDynLines();
+  updateReadout();
+  requestRender();
+}
+syaw.addEventListener('input', () => setYaw(parseInt(syaw.value, 10)));
+document.getElementById('yaw-reset').addEventListener('click', () => setYaw(0));
+
+function setF(v) {
+  state.f = Math.max(120, Math.min(600, Math.round(v)));
+  sf.value = state.f;
+  of.value = state.f;
+  updateDynLines();
+  updateReadout();
+  requestRender();
+}
+sf.addEventListener('input', () => setF(parseInt(sf.value, 10)));
+document.getElementById('f-wide').addEventListener('click', () => setF(150));
+document.getElementById('f-std').addEventListener('click', () => setF(300));
+document.getElementById('f-tele').addEventListener('click', () => setF(550));
+
+/* ---------- ドラッグでヨー回転 ---------- */
+let dragging = false, lastX = 0;
+view.addEventListener('pointerdown', ev => {
+  ev.preventDefault();
+  view.setPointerCapture(ev.pointerId);
+  dragging = true;
+  lastX = ev.clientX;
+});
+view.addEventListener('pointermove', ev => {
+  if (!dragging) return;
+  const d = (ev.clientX - lastX) * 0.25;
+  if (Math.abs(d) < 1) return;
+  lastX = ev.clientX;
+  setYaw(state.yaw + d);
+});
+view.addEventListener('pointerup', () => { dragging = false; });
+view.addEventListener('pointercancel', () => { dragging = false; });
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '4') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+});
+
+/* ---------- 起動 ---------- */
+setStage(1);
+</script>

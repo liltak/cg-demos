@@ -1,0 +1,592 @@
+<title>順番で絵が変わる — CG第5回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .ctl-hint{font-size:13px; color:var(--sub)}
+  .ctl-hint b{color:var(--text); font-weight:600}
+  .legend{
+    display:flex; gap:16px; flex-wrap:wrap; padding:6px 14px 10px; font-size:12.5px; color:var(--sub);
+  }
+  .legend .sw{display:inline-block; width:22px; height:0; vertical-align:middle; margin-right:6px;
+    border-top:3px solid var(--amber); border-radius:2px}
+  .legend .sw.gray{border-top:2px dashed #9AA5B8}
+  .legend .sw.cyan{border-top:2px dotted #2B7FD4}
+  .legend .sw.amber{border-top:2px dashed #E0821F}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10.5px}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+    .ctl-hint{font-size:12px}
+    .legend{font-size:11px; gap:10px}
+  }
+</style>
+
+<header>
+  <h1>順番で絵が変わる<small>コンピュータグラフィックス 第5回 実演 — 変換の合成</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>4</kbd> / <kbd>←</kbd><kbd>→</kbd> で切替</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果 — 方眼紙の上の F</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div class="legend">
+        <span><span class="sw"></span>結果</span>
+        <span><span class="sw gray"></span>元の F</span>
+        <span id="lg-mid"><span class="sw cyan"></span>1段目のあと</span>
+        <span id="lg-cmp" class="hidden"><span class="sw amber"></span>①の結果(比較用)</span>
+      </div>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel" id="ctl-panel">
+      <div class="panel-head"><span class="dot"></span>2つの変換のつまみ(部品はずっと同じ)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="sth">回転の角度 θ</label>
+          <input type="range" id="sth" min="-120" max="120" step="1" value="45">
+          <output id="oth">45°</output>
+        </div>
+        <div class="ctl-row" id="dx-row">
+          <label for="sdx">移動の距離 dx</label>
+          <input type="range" id="sdx" min="0" max="2.5" step="0.05" value="1.5">
+          <output id="odx">1.50</output>
+        </div>
+        <div class="ctl-row">
+          <button class="btn" id="ctl-reset">θ = 45°, dx = 1.5 に戻す</button>
+          <span class="ctl-hint" id="swap-hint">ステージ <b>①⇄②</b> をボタンで行き来して比べる</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="pivot-panel">
+      <div class="panel-head"><span class="dot"></span>回転中心(ピボット)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="spv">回転中心 p</label>
+          <input type="range" id="spv" min="0" max="1" step="0.05" value="1">
+          <output id="opv">1.00</output>
+        </div>
+        <div class="ctl-row">
+          <span class="ctl-hint">左端 <b>0 = 原点</b>(振り回される)⇄ 右端 <b>1 = F の中心</b>(その場で回る)</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — 頂点ごとに実行される計算
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = { stage: 1, th: 45, dx: 1.5, pv: 1.0, fontIdx: 1 };
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 回してから動かす',
+    note:'回転 R → 移動 T の順。原点のまわりで回してから、dx だけ右へ。結果は実線、元の F は点線。②のボタンと何度でも行き来して比べてください。' },
+  { label:'② 動かしてから回す',
+    note:'同じ R と T、順序だけ逆。先に右へずらしたせいで、回転に遠くまで振り回される。うすい橙の点線は①の結果——同じ部品でも、順序で別の絵。' },
+  { label:'③ 掛けて1つにする',
+    note:'座標に 1 を足した同次座標なら、移動も 3×3 の行列になる。先に T × R を計算して1つにまとめれば、掛け算1回で①と同じ絵になる。' },
+  { label:'④ その場で回すには',
+    note:'遠くの F をその場で回すには:中心 p を原点へ連れてくる → 回す → p へ戻す、の3段合成。スライダーで回転中心を原点⇄F の中心と動かしてみる。' },
+];
+
+/* ---------- 行列(同次座標。[a, b, tx, c, d, ty]、3行目は 0 0 1 で固定) ---------- */
+function matR(deg) {
+  const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+  return [c, -s, 0, s, c, 0];
+}
+function matT(dx, dy) { return [1, 0, dx, 0, 1, dy]; }
+function mul(A, B) {           // A × B(B が先に効く)
+  return [
+    A[0] * B[0] + A[1] * B[3],
+    A[0] * B[1] + A[1] * B[4],
+    A[0] * B[2] + A[1] * B[5] + A[2],
+    A[3] * B[0] + A[4] * B[3],
+    A[3] * B[1] + A[4] * B[4],
+    A[3] * B[2] + A[4] * B[5] + A[5],
+  ];
+}
+function apply(M, x, y) { return [M[0] * x + M[1] * y + M[2], M[3] * x + M[4] * y + M[5]]; }
+const ID = [1, 0, 0, 0, 1, 0];
+
+// ④で使う:遠くに置いた F と、その中心
+const FOFF = [1.8, 0.4];
+const FC = [FOFF[0] + 1.0, FOFF[1] + 1.5];
+function pivot() { return [FC[0] * state.pv, FC[1] * state.pv]; }
+
+function currentMatrix() {
+  const R = matR(state.th), T = matT(state.dx, 0);
+  if (state.stage === 2) return mul(R, T);                     // 動かしてから回す
+  if (state.stage === 4) {
+    const p = pivot();
+    return mul(matT(p[0], p[1]), mul(matR(state.th), matT(-p[0], -p[1])));
+  }
+  return mul(T, R);                                            // ①③:回してから動かす
+}
+
+/* ---------- 描画 ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520, U = 38, CX = 225, CY = 310;
+
+const FPTS = [[0,0],[0.7,0],[0.7,1.2],[1.7,1.2],[1.7,1.9],[0.7,1.9],[0.7,2.3],[2,2.3],[2,3],[0,3]];
+function fPts() {
+  return state.stage === 4 ? FPTS.map(p => [p[0] + FOFF[0], p[1] + FOFF[1]]) : FPTS;
+}
+
+const toPx = (x, y) => [CX + x * U, CY - y * U];
+
+function haloText(ctx, text, x, y, color) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+function drawGridAxes() {
+  vctx.strokeStyle = '#E3E8F0'; vctx.lineWidth = 1;
+  for (let g = -8; g <= 10; g++) {
+    vctx.beginPath(); vctx.moveTo(CX + g * U, 0); vctx.lineTo(CX + g * U, RES); vctx.stroke();
+    vctx.beginPath(); vctx.moveTo(0, CY - g * U); vctx.lineTo(RES, CY - g * U); vctx.stroke();
+  }
+  vctx.strokeStyle = '#9AA5B8'; vctx.lineWidth = 1.6;
+  vctx.beginPath(); vctx.moveTo(0, CY); vctx.lineTo(RES, CY); vctx.stroke();
+  vctx.beginPath(); vctx.moveTo(CX, 0); vctx.lineTo(CX, RES); vctx.stroke();
+  vctx.fillStyle = '#3A4560';
+  vctx.beginPath(); vctx.arc(CX, CY, 3.5, 0, Math.PI * 2); vctx.fill();
+  vctx.font = '12px ui-monospace, Menlo, monospace'; vctx.textAlign = 'left';
+  vctx.fillStyle = '#9AA5B8';
+  vctx.fillText('x', RES - 16, CY - 8);
+  vctx.fillText('y', CX + 8, 14);
+  vctx.fillText('O', CX - 14, CY + 16);
+}
+
+function tracePath(pts, M) {
+  vctx.beginPath();
+  pts.forEach((p, i) => {
+    const [x, y] = apply(M, p[0], p[1]);
+    const [px, py] = toPx(x, y);
+    i === 0 ? vctx.moveTo(px, py) : vctx.lineTo(px, py);
+  });
+  vctx.closePath();
+}
+function drawGhost(pts, M, color, dash, label) {
+  tracePath(pts, M);
+  vctx.setLineDash(dash);
+  vctx.strokeStyle = color; vctx.lineWidth = 2;
+  vctx.stroke();
+  vctx.setLineDash([]);
+  if (label) {
+    let sx = 0, sy = 0;
+    pts.forEach(p => { const q = apply(M, p[0], p[1]); sx += q[0]; sy += q[1]; });
+    const [px, py] = toPx(sx / pts.length, sy / pts.length);
+    vctx.font = '12px sans-serif'; vctx.textAlign = 'center';
+    haloText(vctx, label, px, py, color);
+  }
+}
+function drawSolid(pts, M) {
+  tracePath(pts, M);
+  vctx.fillStyle = 'rgba(242,200,158,.85)';
+  vctx.strokeStyle = '#3A4560'; vctx.lineWidth = 2.5;
+  vctx.fill(); vctx.stroke();
+  // 追跡マーカー:F の右上の頂点
+  const q = apply(M, pts[8][0], pts[8][1]);
+  const [px, py] = toPx(q[0], q[1]);
+  vctx.fillStyle = '#D64545';
+  vctx.beginPath(); vctx.arc(px, py, 4.5, 0, Math.PI * 2); vctx.fill();
+}
+
+function render() {
+  vctx.fillStyle = '#FFFFFF';
+  vctx.fillRect(0, 0, RES, RES);
+  drawGridAxes();
+  const pts = fPts();
+  const s = state.stage;
+  const R = matR(state.th), T = matT(state.dx, 0);
+
+  drawGhost(pts, ID, '#9AA5B8', [6, 5], s === 4 ? '元の F(遠くに置いた)' : '元の F');
+
+  if (s === 1) {
+    drawGhost(pts, R, '#2B7FD4', [2, 4], '① 回したあと');
+  } else if (s === 2) {
+    drawGhost(pts, mul(T, R), '#E0821F', [7, 5], '①の結果');
+    drawGhost(pts, T, '#2B7FD4', [2, 4], '① 動かしたあと');
+  } else if (s === 4) {
+    const p = pivot();
+    drawGhost(pts, matT(-p[0], -p[1]), '#9AA5B8', [2, 4], '1) p を原点へ');
+    drawGhost(pts, mul(matR(state.th), matT(-p[0], -p[1])), '#2B7FD4', [2, 4], '2) 回す');
+    // ピボット点の可視化
+    const [px, py] = toPx(p[0], p[1]);
+    vctx.strokeStyle = '#E0821F'; vctx.lineWidth = 2;
+    vctx.beginPath(); vctx.arc(px, py, 9, 0, Math.PI * 2); vctx.stroke();
+    vctx.beginPath(); vctx.moveTo(px - 13, py); vctx.lineTo(px + 13, py); vctx.stroke();
+    vctx.beginPath(); vctx.moveTo(px, py - 13); vctx.lineTo(px, py + 13); vctx.stroke();
+    vctx.font = '12.5px sans-serif'; vctx.textAlign = 'left';
+    haloText(vctx, '回転中心 p', px + 14, py - 10, '#C06E10');
+  }
+
+  drawSolid(pts, currentMatrix());
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+const f2 = v => (v >= 0 ? ' ' : '') + v.toFixed(2);
+
+function paramLineText() {
+  if (state.stage === 4) {
+    const p = pivot();
+    return `const θ = ${state.th};  p = (${f2(p[0])}, ${f2(p[1])});   // ← 角度と回転中心のスライダー`;
+  }
+  return `const θ = ${state.th}, dx = ${f2(state.dx)};      // ← スライダー(θ は度)`;
+}
+function matRow1Text() {
+  const M = currentMatrix();
+  return `M = [[${f2(M[0])}, ${f2(M[1])}, ${f2(M[2])}],`;
+}
+function matRow2Text() {
+  const M = currentMatrix();
+  return `     [${f2(M[3])}, ${f2(M[4])}, ${f2(M[5])}]]   // 3行目は [0, 0, 1] で固定`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  if (s <= 2) {
+    add('// 部品は2つ:回転 R(θ) と、右への移動 T(dx)');
+    add(paramLineText(), 'dynp');
+    add('');
+    if (s === 1) {
+      add('// ① 回してから → 動かす');
+      add('[x1, y1] = 回転(x, y, θ);       // まず、原点のまわりで回す', 'hl');
+      add('[x2, y2] = [x1 + dx, y1];       // つぎに、右へずらす', 'hl');
+    } else {
+      add('// ② 動かしてから → 回す(部品は同じ、順序だけ逆)');
+      add('[x1, y1] = [x + dx, y];         // まず、右へずらす', 'add');
+      add('[x2, y2] = 回転(x1, y1, θ);     // つぎに原点のまわりで回す → 振り回される', 'add');
+    }
+    return L;
+  }
+
+  if (s === 3) {
+    add('// 同次座標:座標に 1 を足して (x, y, 1) にすると、移動も行列になる');
+    add(paramLineText(), 'dynp');
+    add('R = [[c, -s, 0], [s, c, 0], [0, 0, 1]];   // 回転');
+    add('T = [[1, 0, dx], [0, 1, 0], [0, 0, 1]];   // 移動');
+    add('');
+    add('// ★ 先に行列どうしを掛けて、1つにまとめる', 'add');
+    add('M = T × R;                      // 右に書いた R のほうが先に効く', 'add');
+    add(matRow1Text(), 'add dynm1');
+    add(matRow2Text(), 'add dynm2');
+    add('');
+    add('[x2, y2, 1] = M × [x, y, 1];    // 掛け算1回で、①と同じ絵', 'add');
+    return L;
+  }
+
+  add('// 遠くに置いた F を「その場で」回したい');
+  add(paramLineText(), 'dynp');
+  add('');
+  add('// ★ 3段合成:p を原点へ → 回す → p へ戻す', 'add');
+  add('M = T(p) × R(θ) × T(-p);        // 右端の T(-p) が最初に効く', 'add');
+  add(matRow1Text(), 'add dynm1');
+  add(matRow2Text(), 'add dynm2');
+  add('');
+  add('[x2, y2, 1] = M × [x, y, 1];    // ここは③と同じ:掛け算1回');
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+}
+
+// スライダー操作中は dyn の行だけ書き換える(全再構築だと追加行の点滅が再発火するため)
+const DYN_LINES = { dynp: paramLineText, dynm1: matRow1Text, dynm2: matRow2Text };
+function updateDynLines() {
+  for (const k in DYN_LINES) {
+    const el = codeEl.querySelector('.cl.' + k + ' code');
+    if (el) el.innerHTML = highlightJS(DYN_LINES[k]());
+  }
+}
+
+/* ---------- 読み出し(F の右上の頂点 (2,3) を追跡) ---------- */
+const readout = document.getElementById('readout');
+const fp = p => `(${p[0].toFixed(2)}, ${p[1].toFixed(2)})`;
+
+function updateReadout() {
+  const s = state.stage;
+  const R = matR(state.th), T = matT(state.dx, 0);
+  const Q = [2, 3];
+  if (s === 1) {
+    const a = apply(R, Q[0], Q[1]);
+    const b = apply(T, a[0], a[1]);
+    readout.innerHTML = `赤い点 (2, 3):回転 → <b>${fp(a)}</b> → 移動 → <b>${fp(b)}</b>`;
+  } else if (s === 2) {
+    const a = apply(T, Q[0], Q[1]);
+    const b = apply(R, a[0], a[1]);
+    const c = apply(mul(T, R), Q[0], Q[1]);
+    readout.innerHTML = `赤い点 (2, 3):移動 → <b>${fp(a)}</b> → 回転 → <b>${fp(b)}</b>。①では <b>${fp(c)}</b> だった。`;
+  } else if (s === 3) {
+    const M = currentMatrix();
+    readout.innerHTML = `M の右の列 (<b>${M[2].toFixed(2)}</b>, <b>${M[5].toFixed(2)}</b>) が移動ぶん。掛け算1回 = 回転してから移動。`;
+  } else {
+    const p = pivot();
+    readout.innerHTML = `回転中心 p = <b>${fp(p)}</b>。スライダー右端(F の中心)で「その場」回転になる。`;
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(4, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  document.getElementById('pivot-panel').classList.toggle('hidden', state.stage !== 4);
+  document.getElementById('dx-row').classList.toggle('hidden', state.stage === 4);
+  document.getElementById('swap-hint').classList.toggle('hidden', state.stage > 2);
+  document.getElementById('lg-mid').classList.toggle('hidden', state.stage === 3);
+  document.getElementById('lg-cmp').classList.toggle('hidden', state.stage !== 2);
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+
+/* ---------- 再描画(フレーム間引き) ---------- */
+let pending = false;
+function requestRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => { pending = false; render(); });
+}
+
+/* ---------- スライダー ---------- */
+const sth = document.getElementById('sth'), oth = document.getElementById('oth');
+const sdx = document.getElementById('sdx'), odx = document.getElementById('odx');
+const spv = document.getElementById('spv'), opv = document.getElementById('opv');
+
+function onSlider() {
+  state.th = parseInt(sth.value, 10);
+  state.dx = parseFloat(sdx.value);
+  state.pv = parseFloat(spv.value);
+  oth.value = state.th + '°';
+  odx.value = state.dx.toFixed(2);
+  opv.value = state.pv.toFixed(2);
+  updateDynLines();
+  updateReadout();
+  requestRender();
+}
+sth.addEventListener('input', onSlider);
+sdx.addEventListener('input', onSlider);
+spv.addEventListener('input', onSlider);
+document.getElementById('ctl-reset').addEventListener('click', () => {
+  sth.value = 45; sdx.value = 1.5; onSlider();
+});
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '4') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+});
+
+/* ---------- 起動 ---------- */
+setStage(1);
+</script>

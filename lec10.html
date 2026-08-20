@@ -1,0 +1,695 @@
+<title>明るさから、向きを当てる — CG第10回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+  .panel-head .dot.c{background:var(--cyan)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1; cursor:crosshair; touch-action:none}
+  #shots{display:block; width:100%}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10.5px}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+  }
+</style>
+
+<header>
+  <h1>明るさから、向きを当てる<small>コンピュータグラフィックス 第10回 実演 — 逆問題(フォトメトリックステレオ)</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>5</kbd> / <kbd>←</kbd><kbd>→</kbd> で切替</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel hidden" id="shots-panel">
+      <div class="panel-head"><span class="dot c"></span>3枚の写真 — 形は同じ、光だけ変える</div>
+      <canvas id="shots" width="520" height="190"></canvas>
+    </section>
+
+    <section class="panel hidden" id="newlight-panel">
+      <div class="panel-head"><span class="dot"></span>新しい光の向き(検算用 — 撮影に使っていない光)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="snx">左右(lx)</label>
+          <input type="range" id="snx" min="-2" max="2" step="0.05" value="-1">
+          <output id="onx">-1.00</output>
+        </div>
+        <div class="ctl-row">
+          <label for="sny">上下(ly)</label>
+          <input type="range" id="sny" min="-2" max="2" step="0.05" value="0.6">
+          <output id="ony">0.60</output>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — 3つの明るさから、向きを解く
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = {
+  stage: 1,
+  nlx: -1, nly: 0.6,   // ⑤検算用の新しい光(スライダー)
+  hover: null,         // {x, y}(球面ワールド座標)
+  err: null,           // ⑤左右の平均のずれ(0〜255)
+  lostPct: 0,          // 復元不能(影)画素の割合(%)
+  fontIdx: 1,
+};
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 1枚の写真',     note:'球を、光 L1=(1,1,1) で照らして白黒写真に撮った。手元に残るのは、画素ごとの「明るさの数」だけ。ここから逆に、面の向き(法線)を当てられるか?' },
+  { label:'② 1枚では決まらない', note:'写真の上にマウス(タッチ)を。明るさ N・L1 = d になる向きは、L1 を軸にした円錐のうえに無数にある(緑の矢印はその一部)。1枚では、向きは1つに決まらない。' },
+  { label:'③ 光を変えて3枚',  note:'形はそのまま、光だけ変えてあと2枚撮る(下のパネル)。1つの画素につき式が3本:N・L1=d1, N・L2=d2, N・L3=d3。未知数は向きの3成分——数が揃った。' },
+  { label:'④ 連立して解く',   note:'各画素で3元連立一次方程式を逆行列で解き、復元した向きを色で表示(ノーマルマップ:N×0.5+0.5 を RGB)。どれかの写真で影(明るさ0)だった画素は情報が欠けて復元不能——灰色。' },
+  { label:'⑤ 確かめる:もう一度描く', note:'復元した向きで、撮影に使っていない新しい光からもう一度描く(左半分)。右半分は本物の球。推測が正しいかは、もう一度絵にして比べるしかない——CGの往復(作る↔当てる)の核心。' },
+];
+
+/* ---------- ベクトルと行列 ---------- */
+function norm3(v) {
+  const l = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / l, v[1] / l, v[2] / l];
+}
+function dot3(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function cross3(a, b) {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+// 3×3 の逆行列(余因子式)
+function inv3(m) {
+  const [a, b, c] = m[0], [d, e, f] = m[1], [g, h, i] = m[2];
+  const A = e * i - f * h, B = c * h - b * i, C = b * f - c * e;
+  const D = f * g - d * i, E = a * i - c * g, F = c * d - a * f;
+  const Gc = d * h - e * g, H = b * g - a * h, I = a * e - b * d;
+  const det = a * A + b * D + c * Gc;
+  return [[A / det, B / det, C / det], [D / det, E / det, F / det], [Gc / det, H / det, I / det]];
+}
+
+/* ---------- 3つの撮影用ライト(すべて長さ1) ---------- */
+const L1 = norm3([1, 1, 1]);
+const L2 = norm3([-1, 0.5, 1]);
+const L3 = norm3([0.2, -1, 1]);
+const MI = inv3([L1, L2, L3]);   // M = L1,L2,L3 を並べた行列。N = M⁻¹ × (d1,d2,d3)
+
+// 3つの明るさ → 向き(答えの法線は使わない。連立方程式だけで解く)
+function solveNormal(d1, d2, d3) {
+  let nx = MI[0][0] * d1 + MI[0][1] * d2 + MI[0][2] * d3;
+  let ny = MI[1][0] * d1 + MI[1][1] * d2 + MI[1][2] * d3;
+  let nz = MI[2][0] * d1 + MI[2][1] * d2 + MI[2][2] * d3;
+  const l = Math.hypot(nx, ny, nz) || 1;
+  return [nx / l, ny / l, nz / l];
+}
+
+/* ---------- 球のレンダリング(ソフトウェア) ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520;
+const WORLD = 1.08;
+const img = vctx.createImageData(RES, RES);
+const BG = [255, 255, 255];
+const GRAYNA = 150;                 // 復元不能画素の灰色
+
+function xform() {
+  return { u: RES / (2 * WORLD), cx: RES / 2, cy: RES / 2 };
+}
+function trueNormalAt(x, y) {
+  const r2 = x * x + y * y;
+  if (r2 > 1) return null;
+  return [x, y, Math.sqrt(1 - Math.min(r2, 0.999999))];
+}
+function newLight() {
+  return norm3([state.nlx, state.nly, 1]);
+}
+
+function render() {
+  const s = state.stage;
+  const data = img.data;
+  const { u, cx, cy } = xform();
+  const Ln = newLight();
+  let sum = 0, cnt = 0, lost = 0, tot = 0;
+  let i = 0;
+  for (let py = 0; py < RES; py++) {
+    const y = (cy - (py + 0.5)) / u;
+    for (let px = 0; px < RES; px++, i += 4) {
+      const x = ((px + 0.5) - cx) / u;
+      const r2 = x * x + y * y;
+      const cov = Math.max(0, Math.min(1, (1 - Math.sqrt(r2)) * u + 0.5));
+      if (cov <= 0) {
+        data[i] = BG[0]; data[i + 1] = BG[1]; data[i + 2] = BG[2]; data[i + 3] = 255;
+        continue;
+      }
+      const rr = Math.min(r2, 0.999999);
+      const nx = x, ny = y, nz = Math.sqrt(1 - rr);     // 真の法線(撮影に使う)
+      const d1 = Math.max(0, nx * L1[0] + ny * L1[1] + nz * L1[2]);
+      const d2 = Math.max(0, nx * L2[0] + ny * L2[1] + nz * L2[2]);
+      const d3 = Math.max(0, nx * L3[0] + ny * L3[1] + nz * L3[2]);
+      let R, Gc, B;
+      if (s <= 3) {
+        const v = 255 * d1;                             // 白黒写真1
+        R = Gc = B = v;
+      } else {
+        tot++;
+        const ok = d1 > 0 && d2 > 0 && d3 > 0;          // 影 = 情報が欠けた画素
+        if (s === 4) {
+          if (!ok) { R = Gc = B = GRAYNA; lost++; }
+          else {
+            const N = solveNormal(d1, d2, d3);          // 3枚のグレー値から解く
+            R  = (N[0] * 0.5 + 0.5) * 255;
+            Gc = (N[1] * 0.5 + 0.5) * 255;
+            B  = (N[2] * 0.5 + 0.5) * 255;
+          }
+        } else {                                        // ⑤ 検算:左=復元 / 右=本物
+          const gt = 255 * Math.max(0, nx * Ln[0] + ny * Ln[1] + nz * Ln[2]);
+          let gr = GRAYNA;
+          if (ok) {
+            const N = solveNormal(d1, d2, d3);
+            gr = 255 * Math.max(0, N[0] * Ln[0] + N[1] * Ln[1] + N[2] * Ln[2]);
+            sum += Math.abs(gr - gt); cnt++;
+          } else lost++;
+          const v = (px + 0.5) < cx ? gr : gt;
+          R = Gc = B = v;
+        }
+      }
+      data[i]     = R * cov + BG[0] * (1 - cov);
+      data[i + 1] = Gc * cov + BG[1] * (1 - cov);
+      data[i + 2] = B * cov + BG[2] * (1 - cov);
+      data[i + 3] = 255;
+    }
+  }
+  vctx.putImageData(img, 0, 0);
+  state.err = cnt ? sum / cnt : null;
+  state.lostPct = tot ? 100 * lost / tot : 0;
+
+  if (s <= 3) drawPhotoFrame();
+  if (s === 2 && state.hover) drawCone();
+  if (s === 5) drawSplit();
+  // ホバー位置のマーカー
+  if (state.hover) {
+    const hx = cx + state.hover.x * u;
+    const hy = cy - state.hover.y * u;
+    vctx.strokeStyle = '#E0821F';
+    vctx.lineWidth = 2;
+    vctx.beginPath();
+    vctx.arc(hx, hy, 9, 0, Math.PI * 2);
+    vctx.stroke();
+  }
+}
+
+/* ---------- 矢印・文字(白フチ付き) ---------- */
+function drawArrow(ctx, x0, y0, x1, y1, head) {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - head * Math.cos(a - 0.45), y1 - head * Math.sin(a - 0.45));
+  ctx.lineTo(x1 - head * Math.cos(a + 0.45), y1 - head * Math.sin(a + 0.45));
+  ctx.closePath(); ctx.fill();
+}
+function haloArrow(ctx, x0, y0, x1, y1, head, color, width) {
+  ctx.strokeStyle = ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.lineWidth = width + 3.5;
+  drawArrow(ctx, x0, y0, x1, y1, head + 3);
+  ctx.strokeStyle = ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  drawArrow(ctx, x0, y0, x1, y1, head);
+}
+function haloText(ctx, text, x, y, color) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+/* ---------- ①〜③:写真らしさ(フチとラベル) ---------- */
+function drawPhotoFrame() {
+  vctx.strokeStyle = '#D8DEE8';
+  vctx.lineWidth = 2;
+  vctx.strokeRect(10, 10, RES - 20, RES - 20);
+  vctx.font = '13px ui-monospace, Menlo, monospace';
+  vctx.textAlign = 'left';
+  haloText(vctx, '写真1 — 光 L1 = (1, 1, 1) を長さ1に', 20, 34, '#3A4560');
+}
+
+/* ---------- ②:同じ明るさになる向きの候補(円錐) ---------- */
+function drawCone() {
+  const h = state.hover;
+  const n = trueNormalAt(h.x, h.y);
+  if (!n) return;
+  const { u, cx, cy } = xform();
+  const qx = cx + h.x * u, qy = cy - h.y * u;
+  const d1 = Math.max(0, dot3(n, L1));
+  if (d1 <= 0.003) return;                       // 影:候補どころか情報が無い
+  const th = Math.acos(Math.min(1, d1));         // 円錐の半頂角
+  let U = cross3(L1, [0, 0, 1]);
+  const ul = Math.hypot(U[0], U[1], U[2]);
+  U = ul < 1e-6 ? [1, 0, 0] : [U[0] / ul, U[1] / ul, U[2] / ul];
+  const V = cross3(L1, U);
+  const proj = C => {                            // 向き → 画面上の矢印方向
+    let dx = C[0] + 0.42 * C[2], dy = C[1] + 0.26 * C[2];
+    const l = Math.hypot(dx, dy) || 1;
+    return [dx / l, -dy / l];
+  };
+  // L1(青)と、N・L1 = d1 を満たす候補の向き(緑・円錐のうえ)
+  const pl = proj(L1);
+  haloArrow(vctx, qx, qy, qx + pl[0] * 78, qy + pl[1] * 78, 10, '#2B7FD4', 2.6);
+  vctx.font = '13px sans-serif'; vctx.textAlign = 'left';
+  haloText(vctx, 'L1', qx + pl[0] * 78 + 8, qy + pl[1] * 78 + 4, '#2B7FD4');
+  for (let k = 0; k < 5; k++) {
+    const ph = k / 5 * Math.PI * 2 + 0.35;
+    const C = [
+      d1 * L1[0] + Math.sin(th) * (Math.cos(ph) * U[0] + Math.sin(ph) * V[0]),
+      d1 * L1[1] + Math.sin(th) * (Math.cos(ph) * U[1] + Math.sin(ph) * V[1]),
+      d1 * L1[2] + Math.sin(th) * (Math.cos(ph) * U[2] + Math.sin(ph) * V[2]),
+    ];
+    const p = proj(C);
+    haloArrow(vctx, qx, qy, qx + p[0] * 60, qy + p[1] * 60, 8, '#1E9E6C', 2.2);
+  }
+  haloText(vctx, `候補の向き(どれも N・L1 = ${d1.toFixed(2)})`, qx + 14, qy + 74, '#1E9E6C');
+}
+
+/* ---------- ⑤:左右の仕切りとラベル ---------- */
+function drawSplit() {
+  const { cx } = xform();
+  vctx.strokeStyle = 'rgba(58,69,96,.55)';
+  vctx.lineWidth = 1.5;
+  vctx.setLineDash([6, 6]);
+  vctx.beginPath(); vctx.moveTo(cx, 0); vctx.lineTo(cx, RES); vctx.stroke();
+  vctx.setLineDash([]);
+  vctx.font = '13px sans-serif';
+  vctx.textAlign = 'left';
+  haloText(vctx, '復元した向きで描いた', 16, 28, '#C06E10');
+  vctx.textAlign = 'right';
+  haloText(vctx, '本物の球', RES - 16, 28, '#3A4560');
+}
+
+/* ---------- ③:3枚の写真パネル ---------- */
+const shots = document.getElementById('shots');
+const sctx = shots.getContext('2d');
+const SW = 520, SH = 190;
+
+function drawShots() {
+  const im = sctx.createImageData(SW, SH);
+  const d = im.data;
+  for (let k = 0; k < d.length; k += 4) { d[k] = d[k + 1] = d[k + 2] = 255; d[k + 3] = 255; }
+  const centers = [88, 260, 432], cyc = 84, rad = 62;
+  const Ls = [L1, L2, L3];
+  for (let s = 0; s < 3; s++) {
+    const L = Ls[s], cx = centers[s];
+    for (let py = cyc - rad - 2; py <= cyc + rad + 2; py++) {
+      for (let px = cx - rad - 2; px <= cx + rad + 2; px++) {
+        const x = (px + 0.5 - cx) / rad, y = (cyc - (py + 0.5)) / rad;
+        const r2 = x * x + y * y;
+        const cov = Math.max(0, Math.min(1, (1 - Math.sqrt(r2)) * rad + 0.5));
+        if (cov <= 0) continue;
+        const nz = Math.sqrt(1 - Math.min(r2, 0.999999));
+        const v = 255 * Math.max(0, x * L[0] + y * L[1] + nz * L[2]);
+        const k = (py * SW + px) * 4;
+        d[k] = d[k + 1] = d[k + 2] = v * cov + 255 * (1 - cov);
+      }
+    }
+  }
+  sctx.putImageData(im, 0, 0);
+  sctx.strokeStyle = '#D8DEE8'; sctx.lineWidth = 2;
+  sctx.font = '12px ui-monospace, Menlo, monospace';
+  sctx.textAlign = 'center';
+  const labels = ['写真1 L1=( 1,  1, 1)', '写真2 L2=(-1, .5, 1)', '写真3 L3=(.2, -1, 1)'];
+  for (let s = 0; s < 3; s++) {
+    sctx.strokeRect(centers[s] - 76, 8, 152, 152);
+    sctx.fillStyle = '#3A4560';
+    sctx.fillText(labels[s], centers[s], 178);
+  }
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+const fmt = v => (v >= 0 ? ' ' : '') + v.toFixed(2);
+let dynNew = null;
+
+function newLightLineText() {
+  return `const L新 = 長さ1(${fmt(state.nlx)}, ${fmt(state.nly)}, 1);   // ← スライダー(撮影と別の光)`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  add('// 撮影:球を光で照らして、明るさだけを白黒写真に記録する');
+  add('// (N = その画素の面の向き。撮るときは形を知っている)');
+  add('const L1 = 長さ1( 1,  1,  1);        // 写真1の光');
+  add('const d1 = Math.max(0, N・L1);        // 明るさ = cosθ(第1回の式)');
+  add('画素の白さ = 255 * d1;                // 写真に残るのは、この数だけ', s === 1 ? 'hl' : '');
+  if (s >= 2) {
+    add('');
+    add('// 逆に当てたい:d1 だけから N は分かる?', s === 2 ? 'add' : '');
+    add('//   N・L1 = d1 を満たす N は、L1 を軸にした円錐のうえに無数', s === 2 ? 'add hl' : '');
+    add('//   → 1枚では、向きは1つに決まらない', s === 2 ? 'add' : '');
+  }
+  if (s >= 3) {
+    add('');
+    add('// ★ 光を変えて、同じ球をあと2枚撮る', s === 3 ? 'add' : '');
+    add('const L2 = 長さ1(-1, 0.5, 1);   const d2 = Math.max(0, N・L2);', s === 3 ? 'add' : '');
+    add('const L3 = 長さ1(0.2, -1, 1);   const d3 = Math.max(0, N・L3);', s === 3 ? 'add' : '');
+  }
+  if (s >= 4) {
+    add('');
+    add('// ★ 各画素で、式3本の連立一次方程式を解く(未知数 nx, ny, nz)', s === 4 ? 'add' : '');
+    add('//    L1・N = d1,   L2・N = d2,   L3・N = d3', s === 4 ? 'add' : '');
+    add('if (d1 == 0 || d2 == 0 || d3 == 0) return 灰色;  // 影 = 情報が欠けた', s === 4 ? 'add' : '');
+    add('N = M の逆行列 × [d1, d2, d3];   // M = L1, L2, L3 を並べた 3×3 行列', s === 4 ? 'add hl' : '');
+    add('N = N / |N|;                     // 向きだけ残す(長さを 1 に)', s === 4 ? 'add' : '');
+    add('表示色 = N * 0.5 + 0.5;          // 向き → RGB(ノーマルマップ)', s === 4 ? 'add' : '');
+  }
+  if (s >= 5) {
+    add('');
+    add('// ★ 検算:復元した N で、新しい光からもう一度描く', 'add');
+    add(newLightLineText(), 'add dynnew');
+    add('明るさ = Math.max(0, N・L新);          // 左:復元 / 右:本物', 'add hl');
+  }
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynNew = codeEl.querySelector('.cl.dynnew code');
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+
+function updateReadout() {
+  const s = state.stage;
+  const h = state.hover && trueNormalAt(state.hover.x, state.hover.y);
+  if (s === 5) {
+    const e = state.err === null ? '—' : state.err.toFixed(1);
+    readout.innerHTML = `左右の平均のずれ = <b>${e}</b>(0〜255 中)/ 復元不能(灰色)<b>${state.lostPct.toFixed(0)}%</b>。左右がほぼ同じ絵 → 推測は正しかった。`;
+    return;
+  }
+  if (!h) {
+    if (s === 1)      readout.innerHTML = '写真の上にマウス(タッチ)を:その画素に残っている「数」を見る。';
+    else if (s === 2) readout.innerHTML = '写真の上にマウスを:同じ明るさになる向きの候補(緑の矢印)が現れる。';
+    else if (s === 3) readout.innerHTML = '写真の上にマウスを:同じ点の d1, d2, d3 を読む。式が3本になった。';
+    else              readout.innerHTML = '球の上にマウスを:復元した向きと、真の向きとのずれを確かめる。';
+    return;
+  }
+  const d1 = Math.max(0, dot3(h, L1));
+  const d2 = Math.max(0, dot3(h, L2));
+  const d3 = Math.max(0, dot3(h, L3));
+  if (s === 1) {
+    readout.innerHTML = `この画素の明るさ d1 = <b>${d1.toFixed(2)}</b>(255段なら <b>${Math.round(255 * d1)}</b>)。手元にあるのは、この数だけ。`;
+  } else if (s === 2) {
+    readout.innerHTML = d1 <= 0.003
+      ? '明るさ <b>0.00</b>:影の中。候補どころか、向きの情報が何も無い。'
+      : `明るさ <b>${d1.toFixed(2)}</b> になる向きは無数にある(緑はその一部)→ <b>向きは1つに決まらない</b>。`;
+  } else if (s === 3) {
+    readout.innerHTML = `同じ点で d1 = <b>${d1.toFixed(2)}</b> 、 d2 = <b>${d2.toFixed(2)}</b> 、 d3 = <b>${d3.toFixed(2)}</b> — 未知数3つに、式が3本。`;
+  } else {
+    if (d1 > 0 && d2 > 0 && d3 > 0) {
+      const N = solveNormal(d1, d2, d3);
+      const dev = Math.acos(Math.max(-1, Math.min(1, dot3(N, h)))) * 180 / Math.PI;
+      readout.innerHTML = `復元した向き N = (<b>${fmt(N[0])}</b>, <b>${fmt(N[1])}</b>, <b>${fmt(N[2])}</b>)/ 真の向きとのずれ <b>${dev.toFixed(1)}°</b>。`;
+    } else {
+      readout.innerHTML = 'どれかの写真で影(明るさ 0)→ 式が欠けて<b>復元不能</b>(灰色)。';
+    }
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(5, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  document.getElementById('shots-panel').classList.toggle('hidden', state.stage < 3);
+  document.getElementById('newlight-panel').classList.toggle('hidden', state.stage !== 5);
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+
+/* ---------- 再描画(フレーム間引き) ---------- */
+let pending = false;
+function requestRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => {
+    pending = false;
+    render();
+    if (state.stage === 5) updateReadout();   // 平均のずれは描画のついでに集計される
+  });
+}
+
+/* ---------- スライダー(⑤ 新しい光) ---------- */
+const snx = document.getElementById('snx'), sny = document.getElementById('sny');
+const onx = document.getElementById('onx'), ony = document.getElementById('ony');
+
+function onNewLight() {
+  state.nlx = parseFloat(snx.value);
+  state.nly = parseFloat(sny.value);
+  onx.value = state.nlx.toFixed(2);
+  ony.value = state.nly.toFixed(2);
+  if (dynNew) dynNew.innerHTML = highlightJS(newLightLineText());
+  requestRender();
+}
+snx.addEventListener('input', onNewLight);
+sny.addEventListener('input', onNewLight);
+
+/* ---------- ポインタ:ホバー ---------- */
+function toWorld(ev) {
+  const r = view.getBoundingClientRect();
+  const { u, cx, cy } = xform();
+  const px = (ev.clientX - r.left) / r.width * RES;
+  const py = (ev.clientY - r.top) / r.height * RES;
+  return { x: (px - cx) / u, y: (cy - py) / u };
+}
+view.addEventListener('pointerdown', ev => {
+  ev.preventDefault();
+  view.setPointerCapture(ev.pointerId);
+  const w = toWorld(ev);
+  state.hover = (w.x * w.x + w.y * w.y <= 1) ? w : null;
+  updateReadout();
+  requestRender();
+});
+view.addEventListener('pointermove', ev => {
+  const w = toWorld(ev);
+  state.hover = (w.x * w.x + w.y * w.y <= 1) ? w : null;
+  updateReadout();
+  requestRender();
+});
+view.addEventListener('pointerleave', () => {
+  state.hover = null;
+  updateReadout();
+  requestRender();
+});
+view.addEventListener('contextmenu', ev => ev.preventDefault());
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '5') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+});
+
+window.addEventListener('resize', requestRender);
+
+/* ---------- 起動 ---------- */
+drawShots();
+setStage(1);
+</script>

@@ -1,0 +1,705 @@
+<title>『ここ』を数字で言う — CG第3回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  /* 左カラム */
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1; cursor:crosshair; touch-action:none}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .hint{font-size:13px; color:var(--sub)}
+
+  /* 右:コード */
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10.5px}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+    .hint{font-size:12px}
+  }
+</style>
+
+<header>
+  <h1>『ここ』を数字で言う<small>コンピュータグラフィックス 第3回 実演 — 座標とベクトル</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>5</kbd> / <kbd>←</kbd><kbd>→</kbd> で切替</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果(方眼紙:1目盛 = 1)</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel" id="point-panel">
+      <div class="panel-head"><span class="dot"></span>点の座標 (x, y)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="spx">x(横)</label>
+          <input type="range" id="spx" min="-10" max="10" step="1" value="3">
+          <output id="opx">3</output>
+        </div>
+        <div class="ctl-row">
+          <label for="spy">y(縦)</label>
+          <input type="range" id="spy" min="-10" max="10" step="1" value="2">
+          <output id="opy">2</output>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="move-panel">
+      <div class="panel-head"><span class="dot"></span>移動ベクトル (dx, dy)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="sdx">横に dx</label>
+          <input type="range" id="sdx" min="-10" max="10" step="1" value="3">
+          <output id="odx">3</output>
+        </div>
+        <div class="ctl-row">
+          <label for="sdy">縦に dy</label>
+          <input type="range" id="sdy" min="-10" max="10" step="1" value="2">
+          <output id="ody">2</output>
+        </div>
+        <div class="ctl-row">
+          <button class="btn" id="move-reset">(0, 0) に戻す</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="flip-panel">
+      <div class="panel-head"><span class="dot"></span>座標系の切り替え</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <button class="btn" id="flip-btn" aria-pressed="false">画面座標(y が下向き)にする(Y)</button>
+          <span class="hint">画面のピクセル座標は、左上原点・y 下向きが多い</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="scale-panel">
+      <div class="panel-head"><span class="dot"></span>倍率 s(原点中心)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="ss">倍率 s</label>
+          <input type="range" id="ss" min="0.2" max="2.5" step="0.05" value="1.5">
+          <output id="os">1.50</output>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — 座標のリストを、数で動かす
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = {
+  stage: 1,
+  px: 3, py: 2,        // ①の点
+  dx: 3, dy: 2,        // ③の移動ベクトル
+  s: 1.5,              // ⑤の倍率
+  flip: false,         // ④の画面座標トグル
+  hover: null,         // 触れている頂点の番号
+  fontIdx: 1,
+};
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 点を置く',       note:'画面に「ここ」と伝えるには、数字が2つあればいい。スライダーで (x, y) を変えると、点がその通りに動く。' },
+  { label:'② 点をつないで形',  note:'頂点を5個ならべて、順番に線でつなぐと家になる。形の正体は、座標のリスト。頂点に触れると番号と座標が出る。' },
+  { label:'③ 足し算=移動',    note:'全部の頂点に同じ (dx, dy) を足すだけで、形ごと動く。どの頂点にも同じ矢印(ベクトル)が付いているのに注目。' },
+  { label:'④ 画面のyは逆さま', note:'教科書では y は上向き。でも画面の座標は y が下向き(左上が原点のことも多い)。同じ数字のまま、家が逆さに——CG最初の罠。' },
+  { label:'⑤ 掛け算=拡大',    note:'全頂点を s 倍すると、大きくなりながら原点から遠ざかる。「原点中心」がポイント。掛け算の本当の意味は次回(行列)へ。' },
+];
+
+/* ---------- 家の頂点リスト(形 = 座標のリスト) ---------- */
+const HOUSE = [[-3, -2], [3, -2], [3, 2], [0, 5], [-3, 2]];
+
+/* ---------- 座標変換 ---------- */
+const U = 20, C = 260;   // 1目盛 = 20px、原点は画面の中央 (260, 260)
+
+// このステージで実際に効いている値(前のステージでは変換なし)
+function eff() {
+  return {
+    dx: state.stage >= 3 ? state.dx : 0,
+    dy: state.stage >= 3 ? state.dy : 0,
+    s:  state.stage >= 5 ? state.s : 1,
+    flip: state.stage >= 4 && state.flip,
+  };
+}
+function tf(x, y, e) { return [e.s * x + e.dx, e.s * y + e.dy]; }   // 頂点[i] = (s*x + dx, s*y + dy)
+function scr(x, y, e) { return [C + x * U, e.flip ? C + y * U : C - y * U]; }
+
+const fmtN = v => Number.isInteger(v) ? String(v) : v.toFixed(1);
+
+/* ---------- 描画 ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RESV = 520;
+
+function drawArrow(ctx, x0, y0, x1, y1, head) {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - head * Math.cos(a - 0.45), y1 - head * Math.sin(a - 0.45));
+  ctx.lineTo(x1 - head * Math.cos(a + 0.45), y1 - head * Math.sin(a + 0.45));
+  ctx.closePath(); ctx.fill();
+}
+function haloArrow(ctx, x0, y0, x1, y1, head, color, width) {
+  ctx.strokeStyle = ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.lineWidth = width + 3.5;
+  drawArrow(ctx, x0, y0, x1, y1, head + 3);
+  ctx.strokeStyle = ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  drawArrow(ctx, x0, y0, x1, y1, head);
+}
+function haloText(ctx, text, x, y, color) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+function drawGrid(e) {
+  // 薄い方眼 → 5目盛ごと → 座標軸 の順に重ねる
+  for (const pass of [0, 1, 2]) {
+    vctx.lineWidth = pass === 2 ? 2 : 1;
+    vctx.strokeStyle = pass === 2 ? '#3A4560' : pass === 1 ? '#C4CDDB' : '#E4E9F1';
+    vctx.beginPath();
+    for (let i = -13; i <= 13; i++) {
+      const major = i % 5 === 0;
+      if (pass === 0 && major) continue;
+      if (pass === 1 && (i === 0 || !major)) continue;
+      if (pass === 2 && i !== 0) continue;
+      const p = C + i * U;
+      vctx.moveTo(p, 0); vctx.lineTo(p, RESV);
+      vctx.moveTo(0, p); vctx.lineTo(RESV, p);
+    }
+    vctx.stroke();
+  }
+  // 目盛りの数字
+  vctx.font = '11px ui-monospace, Menlo, monospace';
+  vctx.fillStyle = '#5A6578';
+  vctx.textAlign = 'center';
+  for (const v of [-10, -5, 5, 10]) vctx.fillText(String(v), C + v * U, C + 15);
+  vctx.textAlign = 'right';
+  for (const v of [-10, -5, 5, 10]) {
+    const sy = e.flip ? C + v * U : C - v * U;
+    vctx.fillText(String(v), C - 5, sy + 4);
+  }
+  vctx.fillText('0', C - 5, C + 15);
+  // 軸の矢印とラベル
+  vctx.fillStyle = '#3A4560';
+  vctx.beginPath();
+  vctx.moveTo(518, C); vctx.lineTo(506, C - 6); vctx.lineTo(506, C + 6);
+  vctx.closePath(); vctx.fill();
+  const tipY = e.flip ? 518 : 2, back = e.flip ? -12 : 12;
+  vctx.beginPath();
+  vctx.moveTo(C, tipY); vctx.lineTo(C - 6, tipY + back); vctx.lineTo(C + 6, tipY + back);
+  vctx.closePath(); vctx.fill();
+  vctx.textAlign = 'left';
+  vctx.font = '12px ui-monospace, Menlo, monospace';
+  haloText(vctx, '+x', 494, C - 10, '#3A4560');
+  haloText(vctx, '+y', C + 10, e.flip ? 508 : 16, '#3A4560');
+}
+
+function drawPoint(e) {
+  const [sx, sy] = scr(state.px, state.py, e);
+  // 座標の読みとり補助(軸への点線)
+  vctx.strokeStyle = 'rgba(224,130,31,.65)';
+  vctx.lineWidth = 1.5;
+  vctx.setLineDash([4, 4]);
+  vctx.beginPath();
+  vctx.moveTo(sx, C); vctx.lineTo(sx, sy);
+  vctx.moveTo(C, sy); vctx.lineTo(sx, sy);
+  vctx.stroke();
+  vctx.setLineDash([]);
+  // 点
+  vctx.fillStyle = '#FFB45C';
+  vctx.strokeStyle = '#E0821F';
+  vctx.lineWidth = 2;
+  vctx.beginPath(); vctx.arc(sx, sy, 7, 0, Math.PI * 2); vctx.fill(); vctx.stroke();
+  vctx.font = '14px ui-monospace, Menlo, monospace';
+  vctx.textAlign = sx > 430 ? 'right' : 'left';
+  haloText(vctx, `(${state.px}, ${state.py})`, sx + (sx > 430 ? -14 : 14), sy - 12, '#C06E10');
+}
+
+function drawHouse(e) {
+  const pts = HOUSE.map(p => tf(p[0], p[1], e));          // 変換後の頂点(世界座標)
+  const spts = pts.map(p => scr(p[0], p[1], e));          // 画面座標
+
+  // 元の位置のゴーストと移動矢印(③〜)
+  if (state.stage >= 3) {
+    const gh = HOUSE.map(p => scr(p[0], p[1], e));
+    vctx.strokeStyle = 'rgba(58,69,96,.45)';
+    vctx.lineWidth = 2;
+    vctx.setLineDash([6, 5]);
+    vctx.beginPath();
+    gh.forEach((p, i) => i === 0 ? vctx.moveTo(p[0], p[1]) : vctx.lineTo(p[0], p[1]));
+    vctx.closePath(); vctx.stroke();
+    vctx.setLineDash([]);
+    gh.forEach((p, i) => {
+      const q = spts[i];
+      if (Math.hypot(q[0] - p[0], q[1] - p[1]) > 10) {
+        haloArrow(vctx, p[0], p[1], q[0], q[1], 8, '#2B7FD4', 2);
+      }
+    });
+  }
+
+  // 家(塗り+輪郭)
+  vctx.fillStyle = '#F2C89E';
+  vctx.strokeStyle = '#3A4560';
+  vctx.lineWidth = 2.5;
+  vctx.beginPath();
+  spts.forEach((p, i) => i === 0 ? vctx.moveTo(p[0], p[1]) : vctx.lineTo(p[0], p[1]));
+  vctx.closePath(); vctx.fill(); vctx.stroke();
+
+  // 頂点
+  const cx0 = spts.reduce((a, p) => a + p[0], 0) / spts.length;
+  const cy0 = spts.reduce((a, p) => a + p[1], 0) / spts.length;
+  vctx.font = '13px ui-monospace, Menlo, monospace';
+  spts.forEach((p, i) => {
+    vctx.fillStyle = '#3A4560';
+    vctx.beginPath(); vctx.arc(p[0], p[1], 4, 0, Math.PI * 2); vctx.fill();
+    // ②:全頂点に座標ラベル / ③〜:触れた頂点だけ変換後の座標
+    const show = state.stage === 2 || state.hover === i;
+    if (show) {
+      let ux = p[0] - cx0, uy = p[1] - cy0;
+      const l = Math.hypot(ux, uy) || 1; ux /= l; uy /= l;
+      const [wx, wy] = state.stage === 2 ? HOUSE[i] : pts[i];
+      vctx.textAlign = ux < -0.3 ? 'right' : ux > 0.3 ? 'left' : 'center';
+      haloText(vctx, `(${fmtN(wx)}, ${fmtN(wy)})`, p[0] + ux * 22, p[1] + uy * 22 + 4, '#C06E10');
+    }
+    if (state.hover === i) {
+      vctx.strokeStyle = '#E0821F';
+      vctx.lineWidth = 2;
+      vctx.beginPath(); vctx.arc(p[0], p[1], 9, 0, Math.PI * 2); vctx.stroke();
+    }
+  });
+}
+
+function render() {
+  const e = eff();
+  vctx.fillStyle = '#FFFFFF';
+  vctx.fillRect(0, 0, RESV, RESV);
+  drawGrid(e);
+  if (state.stage === 1) drawPoint(e);
+  else drawHouse(e);
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+
+function ptLineText() {
+  return `const x = ${state.px}, y = ${state.py};            // ← スライダーで動かす`;
+}
+function dLineText() {
+  return `const dx = ${state.dx}, dy = ${state.dy};          // ← 移動スライダー`;
+}
+function sLineText() {
+  return `const s = ${state.s.toFixed(2)};               // ← 倍率スライダー`;
+}
+function flipLineText() {
+  return (state.stage >= 4 && state.flip)
+    ? '  const 画面y = 260 + 新y * 20;  // ★ 画面の向き:y は下 → 家が逆さ!'
+    : '  const 画面y = 260 - 新y * 20;  // 数学の向き:y は上';
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  if (s === 1) {
+    add('// 「ここ」を数字2つで言う —— それが座標');
+    add(ptLineText(), 'hl dynp');
+    add('');
+    add('点を打つ(x, y);                 // 原点から 右へ x、上へ y');
+    add('// 画面では 1目盛 = 20px、原点はキャンバス中央 (260, 260)');
+    return L;
+  }
+
+  add('// 形 = 座標のリスト。頂点を順番に線でつなぐ');
+  add('const 家 = [', s === 2 ? 'add' : '');
+  add('  [-3,-2], [ 3,-2], [ 3, 2], [ 0, 5], [-3, 2],', s === 2 ? 'add hl' : '');
+  add('];', s === 2 ? 'add' : '');
+  if (s >= 3) {
+    add('');
+    add(dLineText(), (s === 3 ? 'add ' : '') + 'dynd');
+  }
+  if (s >= 5) {
+    add(sLineText(), (s === 5 ? 'add ' : '') + 'dyns');
+  }
+  add('');
+  add('for (const [x, y] of 家) {');
+  if (s >= 5) {
+    add('  const 新x = s*x + dx, 新y = s*y + dy; // ★ 掛け算 = 原点中心に拡大', s === 5 ? 'add hl' : '');
+  } else if (s >= 3) {
+    add('  const 新x = x + dx, 新y = y + dy;    // ★ 足し算 = そのまま平行移動', s === 3 ? 'add hl' : '');
+  }
+  if (s >= 4) {
+    add('');
+    add('  // ★ 画面の y は下向き —— CG最初の罠', s === 4 ? 'add' : '');
+    add('  const 画面x = 260 + 新x * 20;', s === 4 ? 'add' : '');
+    add(flipLineText(), (s === 4 ? 'add ' : '') + 'hl dynflip');
+    add('  線を引く(画面x, 画面y);', s === 4 ? 'add' : '');
+  } else if (s >= 3) {
+    add('  線を引く(新x, 新y);');
+  } else {
+    add('  線を引く(x, y);                // 最後は最初の点へ戻る');
+  }
+  add('}');
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else|of)\b|\b(Math\.\w+)\b|(-?\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+const DYNS = ['dynp', 'dynd', 'dyns', 'dynflip'];
+const DYN_TEXT = { dynp: ptLineText, dynd: dLineText, dyns: sLineText, dynflip: flipLineText };
+let dynEls = {};
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynEls = {};
+  for (const c of DYNS) {
+    const el = codeEl.querySelector('.cl.' + c + ' code');
+    if (el) dynEls[c] = el;
+  }
+}
+
+// スライダー操作中は該当行だけ書き換える(全再構築だと追加行の点滅が再発火するため)
+function updateDyn() {
+  for (const c in dynEls) dynEls[c].innerHTML = highlightJS(DYN_TEXT[c]());
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+
+function updateReadout() {
+  const e = eff();
+  if (state.stage === 1) {
+    const hx = state.px >= 0 ? '右' : '左', hy = state.py >= 0 ? '上' : '下';
+    readout.innerHTML = `点 (x, y) = (<b>${state.px}</b>, <b>${state.py}</b>) — 原点から${hx}へ ${Math.abs(state.px)}、${hy}へ ${Math.abs(state.py)}。数字2つで場所がひとつ決まる。`;
+    return;
+  }
+  if (state.hover !== null) {
+    const [hx, hy] = HOUSE[state.hover];
+    const [tx, ty] = tf(hx, hy, e);
+    readout.innerHTML = state.stage >= 3
+      ? `頂点[${state.hover}] (${hx}, ${hy}) → (<b>${fmtN(tx)}</b>, <b>${fmtN(ty)}</b>)`
+      : `頂点[${state.hover}] = (<b>${hx}</b>, <b>${hy}</b>)`;
+    return;
+  }
+  if (state.stage === 2) {
+    readout.innerHTML = '頂点は <b>5 個</b>。この座標のリストが「家」の正体。頂点に触れてみてください。';
+  } else if (state.stage === 3) {
+    readout.innerHTML = `移動 (dx, dy) = (<b>${state.dx}</b>, <b>${state.dy}</b>)。例:頂点[0] (-3, -2) → (<b>${-3 + state.dx}</b>, <b>${-2 + state.dy}</b>)。5個全部に同じ足し算。`;
+  } else if (state.stage === 4) {
+    readout.innerHTML = e.flip
+      ? '<b>画面座標</b>:y は下向き。数字は同じなのに、家は逆さまに映る。'
+      : 'いまは<b>数学の向き</b>(y は上)。ボタンで画面の向きに切り替えてみる。';
+  } else {
+    const [ax, ay] = tf(0, 5, e);
+    readout.innerHTML = `倍率 s = <b>${state.s.toFixed(2)}</b>:全頂点が (s·x+dx, s·y+dy) へ。屋根 (0, 5) → (<b>${fmtN(ax)}</b>, <b>${fmtN(ay)}</b>)。原点から離れつつ大きくなる。`;
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(5, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  document.getElementById('point-panel').classList.toggle('hidden', state.stage !== 1);
+  document.getElementById('move-panel').classList.toggle('hidden', state.stage < 3);
+  document.getElementById('flip-panel').classList.toggle('hidden', state.stage < 4);
+  document.getElementById('scale-panel').classList.toggle('hidden', state.stage < 5);
+  state.hover = null;
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+
+/* ---------- 再描画(フレーム間引き) ---------- */
+let pending = false;
+function requestRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => { pending = false; render(); });
+}
+
+/* ---------- スライダーとボタン ---------- */
+const spx = document.getElementById('spx'), opx = document.getElementById('opx');
+const spy = document.getElementById('spy'), opy = document.getElementById('opy');
+const sdx = document.getElementById('sdx'), odx = document.getElementById('odx');
+const sdy = document.getElementById('sdy'), ody = document.getElementById('ody');
+const ss = document.getElementById('ss'), os = document.getElementById('os');
+const flipBtn = document.getElementById('flip-btn');
+
+function onPoint() {
+  state.px = parseInt(spx.value, 10);
+  state.py = parseInt(spy.value, 10);
+  opx.value = state.px; opy.value = state.py;
+  updateDyn(); updateReadout(); requestRender();
+}
+spx.addEventListener('input', onPoint);
+spy.addEventListener('input', onPoint);
+
+function onMove() {
+  state.dx = parseInt(sdx.value, 10);
+  state.dy = parseInt(sdy.value, 10);
+  odx.value = state.dx; ody.value = state.dy;
+  updateDyn(); updateReadout(); requestRender();
+}
+sdx.addEventListener('input', onMove);
+sdy.addEventListener('input', onMove);
+document.getElementById('move-reset').addEventListener('click', () => {
+  sdx.value = 0; sdy.value = 0; onMove();
+});
+
+ss.addEventListener('input', () => {
+  state.s = parseFloat(ss.value);
+  os.value = state.s.toFixed(2);
+  updateDyn(); updateReadout(); requestRender();
+});
+
+function setFlip(on) {
+  state.flip = on;
+  flipBtn.textContent = on ? '数学座標(y が上向き)に戻す(Y)' : '画面座標(y が下向き)にする(Y)';
+  flipBtn.classList.toggle('active', on);
+  flipBtn.setAttribute('aria-pressed', String(on));
+  updateDyn(); updateReadout(); requestRender();
+}
+flipBtn.addEventListener('click', () => setFlip(!state.flip));
+
+/* ---------- マウス / タッチ:頂点に触れる ---------- */
+function vertexAt(ev) {
+  const rct = view.getBoundingClientRect();
+  const px = (ev.clientX - rct.left) / rct.width * RESV;
+  const py = (ev.clientY - rct.top) / rct.height * RESV;
+  const e = eff();
+  let best = null, bd = 18 * 18;
+  HOUSE.forEach((p, i) => {
+    const t = tf(p[0], p[1], e);
+    const q = scr(t[0], t[1], e);
+    const d = (q[0] - px) ** 2 + (q[1] - py) ** 2;
+    if (d < bd) { bd = d; best = i; }
+  });
+  return best;
+}
+function onPointer(ev) {
+  if (state.stage < 2) return;
+  const h = vertexAt(ev);
+  if (h !== state.hover) {
+    state.hover = h;
+    updateReadout(); requestRender();
+  }
+}
+view.addEventListener('pointermove', onPointer);
+view.addEventListener('pointerdown', ev => { ev.preventDefault(); onPointer(ev); });
+view.addEventListener('pointerleave', () => {
+  if (state.hover === null) return;
+  state.hover = null;
+  updateReadout(); requestRender();
+});
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '5') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+  else if ((ev.key === 'y' || ev.key === 'Y') && state.stage >= 4) setFlip(!state.flip);
+});
+
+/* ---------- 起動 ---------- */
+setStage(1);
+</script>

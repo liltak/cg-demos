@@ -1,0 +1,618 @@
+<title>測れない面がある — CG第14回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1; cursor:grab; touch-action:none}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .btn:disabled{opacity:.5; cursor:default}
+  .drag-hint{font-size:13px; color:var(--sub)}
+  .drag-hint b{color:var(--text); font-weight:600}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10.5px}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+    .drag-hint{font-size:12px}
+  }
+</style>
+
+<header>
+  <h1>測れない面がある<small>コンピュータグラフィックス 第14回 実演 — 3次元データはなぜ足りないか</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>4</kbd> / <kbd>←</kbd><kbd>→</kbd> で切替 <kbd>S</kbd> 自動回転</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果 — スキャンした点群</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>視点(点を描き直すだけ。スキャンはし直さない)</div>
+      <div class="controls">
+        <div class="drag-hint">画面を<b>横にドラッグ</b>すると、視点が回ります(スライダーでも同じ)。</div>
+        <div class="ctl-row">
+          <label for="syaw">視点ヨー角</label>
+          <input type="range" id="syaw" min="-180" max="180" step="1" value="0">
+          <output id="oyaw">0°</output>
+        </div>
+        <div class="ctl-row">
+          <button class="btn" id="auto-btn" aria-pressed="false">▶ 自動で回す(S)</button>
+          <button class="btn" id="front-btn">正面に戻す(F)</button>
+        </div>
+        <div class="ctl-row hidden" id="scan-row">
+          <button class="btn" id="add-btn">+ 右45°から2方向目をスキャン</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — 光線を飛ばして、点を打つ
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = { stage: 1, yaw: 0, auto: false, scan2: false, fontIdx: 1 };
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 正面からスキャン',
+    note:'正面から平行なレーザーを一斉に飛ばし、最初に当たった表面に点を打つ。スキャンした向きから見ると、すき間なく測れた完璧な絵に見える。……本当に?' },
+  { label:'② 回すと、穴',
+    note:'視点を回す(ドラッグ or 自動)。球の裏側と、球の陰になった床が真っ白=点がひとつも無い。カメラに見えなかった面は、原理的に測れない。' },
+  { label:'③ 2方向目を足す',
+    note:'ボタンで、右45°からもう一度スキャン(青い点)。1方向目の穴に2方向目の点が入って、欠けがぐっと減る。' },
+  { label:'④ それでも残る欠け',
+    note:'それでも球の底と真下の床は、2方向のどちらからも見えず欠けたまま——届かない場所は何方向撮っても残るから、完全な3次元データは高くつく。第10回(逆問題)と同じで、実務の3D計測は残った穴を人が埋めている。' },
+];
+
+/* ---------- シーン:球(半径1・中心やや上)+床平面 ---------- */
+const SC  = [0, 1.2, 0];          // 球の中心(床から少し浮かせる)
+const EXT = 2.4;                  // 床の広さ [-EXT, EXT]
+const TGT = [0, 0.9, 0];          // 注視点
+const PITCH = 22 * Math.PI / 180; // 見下ろし角(スキャンも表示も同じ)
+const LDIR = (() => { const l = Math.hypot(1, 1, 1); return [1 / l, 1 / l, 1 / l]; })();
+const INF = Infinity;
+
+/* ヨー角 → カメラの基底(e=カメラ位置の向き, f=前, r=右, u=上) */
+function basis(a) {
+  const cp = Math.cos(PITCH), sp = Math.sin(PITCH);
+  const sa = Math.sin(a), ca = Math.cos(a);
+  return {
+    e: [sa * cp,  sp,  ca * cp],
+    f: [-sa * cp, -sp, -ca * cp],
+    r: [ca, 0, -sa],
+    u: [-sa * sp, cp, -ca * sp],
+  };
+}
+
+/* ---------- スキャン:平行光線を格子状に飛ばす(切替時に1回だけ) ---------- */
+const NU = 72, NV = 50, HU = 2.6, HV = 1.85;
+
+function scan(yawDeg, tint) {
+  const B = basis(yawDeg * Math.PI / 180);
+  const [fx, fy, fz] = B.f;
+  const pts = [];
+  for (let iv = 0; iv < NV; iv++) {
+    for (let iu = 0; iu < NU; iu++) {
+      const gu = -HU + 2 * HU * iu / (NU - 1);
+      const gv = -HV + 2 * HV * iv / (NV - 1);
+      // 光線の始点(カメラ側の遠くから、全部同じ向き d = f で飛ばす)
+      const o = [
+        TGT[0] + B.e[0] * 12 + B.r[0] * gu + B.u[0] * gv,
+        TGT[1] + B.e[1] * 12 + B.r[1] * gu + B.u[1] * gv,
+        TGT[2] + B.e[2] * 12 + B.r[2] * gu + B.u[2] * gv,
+      ];
+      // --- 球:|o + t·d − 中心|² = 1 → t の二次方程式(d·d = 1 なので a = 1)
+      const ox = o[0] - SC[0], oy = o[1] - SC[1], oz = o[2] - SC[2];
+      const b = 2 * (fx * ox + fy * oy + fz * oz);
+      const c = ox * ox + oy * oy + oz * oz - 1;
+      const disc = b * b - 4 * c;
+      let tS = INF;
+      if (disc > 0) {
+        const t0 = (-b - Math.sqrt(disc)) / 2;
+        if (t0 > 0) tS = t0;
+      }
+      // --- 床:高さ 0 の平面。o.y + t·d.y = 0 → 一次式
+      let tF = INF;
+      if (fy < -1e-6) {
+        const t1 = -o[1] / fy;
+        const hx = o[0] + fx * t1, hz = o[2] + fz * t1;
+        if (t1 > 0 && Math.abs(hx) <= EXT && Math.abs(hz) <= EXT) tF = t1;
+      }
+      const t = Math.min(tS, tF);
+      if (t === INF) continue;                 // どこにも当たらない → 点は生まれない
+      const px = o[0] + fx * t, py = o[1] + fy * t, pz = o[2] + fz * t;
+      // 点の色(球は拡散シェーディング、床は一定色。2方向目は青系)
+      let col;
+      if (tS <= tF) {
+        const d0 = Math.max(0, (px - SC[0]) * LDIR[0] + (py - SC[1]) * LDIR[1] + (pz - SC[2]) * LDIR[2]);
+        const q = Math.round((0.18 + 0.82 * d0) * 8) / 8;   // 8段に量子化(描画の高速化)
+        const base = tint ? [125, 190, 252] : [242, 200, 158];
+        col = `rgb(${base[0] * q | 0},${base[1] * q | 0},${base[2] * q | 0})`;
+      } else {
+        col = tint ? '#7FA6CC' : '#A9B2C2';
+      }
+      pts.push({ x: px, y: py, z: pz, col });
+    }
+  }
+  pts.sort((p, q) => p.col < q.col ? -1 : p.col > q.col ? 1 : 0);  // 色ごとにまとめる
+  return pts;
+}
+
+const scanA = scan(0, false);   // 1方向目(正面)
+let scanB = null;               // 2方向目(右45°)は③で作る
+
+/* ---------- 表示:簡易透視投影(点の再投影のみ) ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520, FL = 430, DIST = 6.2;
+
+function viewerBasis() {
+  const B = basis(state.yaw * Math.PI / 180);
+  return {
+    eye: [TGT[0] + B.e[0] * DIST, TGT[1] + B.e[1] * DIST, TGT[2] + B.e[2] * DIST],
+    f: B.f, r: B.r, u: B.u,
+  };
+}
+function proj(p, E) {
+  const x = p[0] - E.eye[0], y = p[1] - E.eye[1], z = p[2] - E.eye[2];
+  const cz = x * E.f[0] + y * E.f[1] + z * E.f[2];
+  if (cz < 0.6) return null;
+  return [
+    RES / 2 + FL * (x * E.r[0] + y * E.r[1] + z * E.r[2]) / cz,
+    RES / 2 - FL * (x * E.u[0] + y * E.u[1] + z * E.u[2]) / cz,
+    cz,
+  ];
+}
+
+function drawPts(pts, E) {
+  const [ex, ey, ez] = E.eye;
+  const [fx, fy, fz] = E.f, [rx, ry, rz] = E.r, [ux, uy, uz] = E.u;
+  let cur = '';
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const dx = p.x - ex, dy = p.y - ey, dz = p.z - ez;
+    const cz = dx * fx + dy * fy + dz * fz;
+    if (cz < 0.6) continue;
+    const sx = RES / 2 + FL * (dx * rx + dy * ry + dz * rz) / cz;
+    const sy = RES / 2 - FL * (dx * ux + dy * uy + dz * uz) / cz;
+    if (sx < -4 || sx > RES + 4 || sy < -4 || sy > RES + 4) continue;
+    const s = Math.max(1.8, Math.min(6, 24 / cz));
+    if (p.col !== cur) { cur = p.col; vctx.fillStyle = cur; }
+    vctx.fillRect(sx - s / 2, sy - s / 2, s, s);
+  }
+}
+
+/* ---------- スキャナーの向きの矢印 ---------- */
+function drawArrow(ctx, x0, y0, x1, y1, head) {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - head * Math.cos(a - 0.45), y1 - head * Math.sin(a - 0.45));
+  ctx.lineTo(x1 - head * Math.cos(a + 0.45), y1 - head * Math.sin(a + 0.45));
+  ctx.closePath(); ctx.fill();
+}
+function haloArrow(ctx, x0, y0, x1, y1, head, color, width) {
+  ctx.strokeStyle = ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.lineWidth = width + 3.5;
+  drawArrow(ctx, x0, y0, x1, y1, head + 3);
+  ctx.strokeStyle = ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  drawArrow(ctx, x0, y0, x1, y1, head);
+}
+function haloText(ctx, text, x, y, color) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+function drawScanner(azDeg, color, label, E) {
+  const diff = ((state.yaw - azDeg + 180) % 360 + 360) % 360 - 180;
+  if (Math.abs(diff) < 15) return;          // ほぼ正面に重なるときは描かない
+  const cp = Math.cos(PITCH), sp = Math.sin(PITCH);
+  const a = azDeg * Math.PI / 180;
+  const e = [Math.sin(a) * cp, sp, Math.cos(a) * cp];
+  const A = [TGT[0] + e[0] * 3.8, TGT[1] + e[1] * 3.8, TGT[2] + e[2] * 3.8];
+  const B = [TGT[0] + e[0] * 2.6, TGT[1] + e[1] * 2.6, TGT[2] + e[2] * 2.6];
+  const pa = proj(A, E), pb = proj(B, E);
+  if (!pa || !pb) return;
+  haloArrow(vctx, pa[0], pa[1], pb[0], pb[1], 10, color, 2.6);
+  vctx.font = '13px sans-serif';
+  vctx.textAlign = 'center';
+  haloText(vctx, label, pa[0], pa[1] - 14, color);
+}
+
+function render() {
+  vctx.fillStyle = '#FFFFFF';
+  vctx.fillRect(0, 0, RES, RES);
+  const E = viewerBasis();
+  drawPts(scanA, E);
+  if (state.scan2 && scanB) drawPts(scanB, E);
+  drawScanner(0, '#E0821F', 'スキャン1(正面)', E);
+  if (state.scan2) drawScanner(45, '#2B7FD4', 'スキャン2(右45°)', E);
+}
+
+/* ---------- 再描画(フレーム間引き) ---------- */
+let pending = false;
+function requestRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => { pending = false; render(); });
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+let dynEl = null;
+
+function yawLineText() {
+  return `const ヨー = ${Math.round(state.yaw)}°;              // ← ドラッグ / 自動で回す`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  add('// スキャン:カメラの向きから、平行な光線を格子状に飛ばす');
+  add('function スキャン(向きd, 色) {           // d は長さ1の矢印');
+  add('  for (格子の 72 × 50 本の光線 o + t·d) {');
+  add('    // 球に当たる? |o + t·d − 中心|² = 1 → t の二次方程式');
+  add('    const b = 2 * 内積(d, o - 中心);     // (d·d = 1 なので a = 1)');
+  add('    const c = 内積(o - 中心, o - 中心) - 1;');
+  add('    const 判別式 = b*b - 4*c;', s === 1 ? 'hl' : '');
+  add('    let t球 = 判別式 > 0 ? (-b - Math.sqrt(判別式)) / 2 : 無限;');
+  add('    // 床に当たる? 高さ 0 の平面 → 一次式で一発');
+  add('    let t床 = -o.y / d.y;                // 床の外なら 無限');
+  add('    const t = Math.min(t球, t床);        // 先に当たった表面');
+  add('    if (t === 無限) continue;            // どこにも当たらない光線', s === 2 ? 'hl' : '');
+  add('    点群.push({ 位置: o + t*d, 色 });    // 表面に点をひとつ', s === 1 ? 'hl' : '');
+  add('  }');
+  add('}');
+  add('スキャン(正面, こはく色);                // 1方向目 約2000点');
+  if (s >= 2) {
+    add('');
+    add('// 表示:たまった点を、いまの視点から描き直すだけ', s === 2 ? 'add' : '');
+    add(yawLineText(), (s === 2 ? 'add ' : '') + 'dyn');
+    add('for (点群の各点 p) {', s === 2 ? 'add' : '');
+    add('  q = 回す(p - 注視点, ヨー);          // 視点の回転', s === 2 ? 'add' : '');
+    add('  画面x = 260 + 430 * q.x / q.z;       // 遠近:z で割る', s === 2 ? 'add' : '');
+    add('  画面y = 260 - 430 * q.y / q.z;', s === 2 ? 'add' : '');
+    add('}  // 点が無い面は、白いまま = 穴', s === 2 ? 'add' : '');
+  }
+  if (s >= 3 && state.scan2) {
+    add('');
+    add('スキャン(右45°, 青);                   // ★ 2方向目:穴に点を足す', s === 3 ? 'add' : '');
+  }
+  if (s >= 4) {
+    add('');
+    add('// ★ それでも、球の底と真下の床には、どちらの向きの', 'add');
+    add('//    光線も届かない → 点は永遠に増えない(欠けは残る)', 'add');
+  }
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else|continue)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynEl = codeEl.querySelector('.cl.dyn code');
+}
+
+// ヨー角はコード内にライブ表示(この行だけ書き換える。全再構築は点滅が再発火するので禁止)
+function updateDynLine() {
+  if (dynEl) dynEl.innerHTML = highlightJS(yawLineText());
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+function updateReadout() {
+  const y = Math.round(state.yaw);
+  const n1 = scanA.length;
+  const n2 = (state.scan2 && scanB) ? scanB.length : 0;
+  const hints = [
+    'スキャンと同じ視点。すき間なく測れて見える。',
+    '白い場所 = 点がゼロ。球の裏と、球の陰の床。',
+    'ボタンで2方向目(青)を追加 → 穴が減る。',
+    'それでも球の底と真下の床は、白いまま。',
+  ];
+  readout.innerHTML = `ヨー <b>${y}°</b>  点 <b>${n1}</b>${n2 ? `+<b>${n2}</b>` : ''}個  ${hints[state.stage - 1]}`;
+}
+
+/* ---------- 視点の操作 ---------- */
+const syaw = document.getElementById('syaw'), oyaw = document.getElementById('oyaw');
+
+function setYaw(deg) {
+  state.yaw = ((deg + 180) % 360 + 360) % 360 - 180;
+  syaw.value = Math.round(state.yaw);
+  oyaw.value = Math.round(state.yaw) + '°';
+  updateDynLine();
+  updateReadout();
+  requestRender();
+}
+syaw.addEventListener('input', () => { setAuto(false); setYaw(parseFloat(syaw.value)); });
+document.getElementById('front-btn').addEventListener('click', () => { setAuto(false); setYaw(0); });
+
+/* 自動で回す */
+const autoBtn = document.getElementById('auto-btn');
+let lastAuto = null;
+function autoFrame(now) {
+  if (!state.auto) { lastAuto = null; return; }
+  if (lastAuto !== null) setYaw(state.yaw + (now - lastAuto) / 1000 * 26);   // 26°/秒
+  lastAuto = now;
+  requestAnimationFrame(autoFrame);
+}
+function setAuto(on) {
+  if (state.auto === on) return;
+  state.auto = on;
+  autoBtn.textContent = on ? '⏸ 回転を止める(S)' : '▶ 自動で回す(S)';
+  autoBtn.classList.toggle('active', on);
+  autoBtn.setAttribute('aria-pressed', String(on));
+  lastAuto = null;
+  if (on) requestAnimationFrame(autoFrame);
+}
+autoBtn.addEventListener('click', () => setAuto(!state.auto));
+
+/* ドラッグ(横)でヨー回転 */
+let dragging = false, lastX = 0;
+view.addEventListener('pointerdown', ev => {
+  ev.preventDefault();
+  view.setPointerCapture(ev.pointerId);
+  dragging = true;
+  lastX = ev.clientX;
+  setAuto(false);
+});
+view.addEventListener('pointermove', ev => {
+  if (!dragging) return;
+  const dx = ev.clientX - lastX;
+  lastX = ev.clientX;
+  setYaw(state.yaw + dx * 0.4);
+});
+view.addEventListener('pointerup', () => { dragging = false; });
+view.addEventListener('pointercancel', () => { dragging = false; });
+
+/* ---------- 2方向目のスキャン ---------- */
+const addBtn = document.getElementById('add-btn');
+function addScan2() {
+  if (state.scan2) return;
+  if (!scanB) scanB = scan(45, true);        // スキャンは1回だけ計算
+  state.scan2 = true;
+  addBtn.disabled = true;
+  addBtn.textContent = '2方向目 追加済み(青い点)';
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+addBtn.addEventListener('click', addScan2);
+function resetScan2() {
+  if (!state.scan2) return;
+  state.scan2 = false;
+  addBtn.disabled = false;
+  addBtn.textContent = '+ 右45°から2方向目をスキャン';
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(4, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  document.getElementById('scan-row').classList.toggle('hidden', state.stage < 3);
+  if (state.stage <= 2) resetScan2();
+  if (state.stage === 1) { setAuto(false); setYaw(0); }
+  else if (state.stage === 2) { setAuto(true); }
+  else if (state.stage === 3) { setAuto(false); if (Math.abs(state.yaw) < 20) setYaw(60); }
+  else { if (!state.scan2) addScan2(); setAuto(true); }
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '4') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+  else if (ev.key === 's' || ev.key === 'S') setAuto(!state.auto);
+  else if (ev.key === 'f' || ev.key === 'F') { setAuto(false); setYaw(0); }
+});
+
+window.addEventListener('resize', requestRender);
+
+/* ---------- 起動 ---------- */
+setStage(1);
+</script>

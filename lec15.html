@@ -1,0 +1,611 @@
+<title>半年ぶんを、1画面に — CG第15回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .btn:disabled{opacity:.45; cursor:default}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10.5px}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+  }
+</style>
+
+<header>
+  <h1>半年ぶんを、1画面に<small>コンピュータグラフィックス 第15回 実演 — 空間・光・時間、ぜんぶ</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>5</kbd> / <kbd>←</kbd><kbd>→</kbd> 切替 <kbd>Space</kbd> 再生/停止</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>コントロール</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <button class="btn" id="play-btn" disabled>▶ 再生(Space)</button>
+          <button class="btn" id="restart-btn" disabled>↺ 最初から(R)</button>
+        </div>
+        <div class="ctl-row hidden" id="style-row">
+          <label>様式のトグル</label>
+          <button class="btn" id="cel-btn" aria-pressed="false">セルルック 4段塗り(C)</button>
+          <button class="btn" id="koma-btn" aria-pressed="false">3コマ打ち 8枚/秒(K)</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — 半年ぶんの数式が、全部いる
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = { stage: 1, playing: false, cel: false, koma: false, fontIdx: 1 };
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 空間',
+    note:'第2〜6回:空間を数で書いた。中心の座標 (x, y) と半径——数がひとつ決まると、置き場所がひとつ決まる。まだ輪郭だけの球。' },
+  { label:'② 光',
+    note:'第7〜10回:光を数で書いた。第1回の式 明るさ = max(0, N·L̂) がそのまま再登場。内積ひとつで、輪郭だけの円が立体になる。' },
+  { label:'③ 時間',
+    note:'第11〜13回:時間を数で書いた。重力で加速して、反発係数 0.62 で跳ね返る。シェーディングされた球が、物理で動き出す。' },
+  { label:'④ 様式',
+    note:'できるから、外せる(第9回)。トグルで明るさを4段に(セルルック)、時間を8枚/秒に(3コマ打ち)。物理は同じまま、アニメの絵になる。' },
+  { label:'⑤ 全部のせ',
+    note:'誇張フィルタ(σ = 0.12, k = 1.5)と、つぶし・伸ばしも ON。この画面には、半年ぶんの数式が全部いる。数式は同じ。何を作るかを決めたのは、いつも人間。' },
+];
+
+/* ---------- 物理シミュレーション(第11回と同じ:全時刻を先に作る) ---------- */
+const SIM = 240;                 // 1秒あたりのサンプル数
+const T = 3.6;                   // ループの長さ(秒)
+const NF = Math.floor(T * SIM);
+const GRV = 6.0, R = 0.13, H0 = 1.5, REST = 0.62, T_REL = 0.5;
+const SIG = 0.12, K = 1.5;       // 誇張フィルタ:ならしの幅 σ と強さ k
+
+const yBounce = (() => {
+  const arr = new Float64Array(NF);
+  let y = H0, v = 0, resting = false;
+  for (let i = 0; i < NF; i++) {
+    const t = i / SIM;
+    if (t > T_REL && !resting) {
+      v -= GRV / SIM;                        // 重力
+      y += v / SIM;
+      if (y < R) {
+        y = R; v = -v * REST;                // 反発係数 e = 0.62
+        if (Math.abs(v) < 0.18) { v = 0; resting = true; }
+      }
+    }
+    arr[i] = y;
+  }
+  return arr;
+})();
+
+/* 誇張フィルタ:y* = y − k·σ²·(ぼかした y)″ (Wang et al., SIGGRAPH 2006) */
+const yAnim = new Float64Array(NF);
+(() => {
+  const rad = Math.round(3 * SIG * SIM);
+  const w = new Float64Array(2 * rad + 1);
+  let sum = 0;
+  for (let j = -rad; j <= rad; j++) {
+    w[j + rad] = Math.exp(-(j * j) / (2 * (SIG * SIM) ** 2));
+    sum += w[j + rad];
+  }
+  for (let j = 0; j < w.length; j++) w[j] /= sum;
+  const blur = new Float64Array(NF);
+  for (let i = 0; i < NF; i++) {
+    let s = 0;
+    for (let j = -rad; j <= rad; j++) {
+      const idx = Math.min(NF - 1, Math.max(0, i + j));
+      s += yBounce[idx] * w[j + rad];
+    }
+    blur[i] = s;
+  }
+  for (let i = 0; i < NF; i++) {
+    const i0 = Math.max(0, i - 1), i1 = Math.min(NF - 1, i + 1);
+    const acc = (blur[i0] - 2 * blur[i] + blur[i1]) * SIM * SIM;
+    yAnim[i] = yBounce[i] - K * SIG * SIG * acc;
+  }
+})();
+const VMAX = Math.sqrt(2 * GRV * (H0 - R));
+
+/* ---------- 再生時刻 ---------- */
+let phase = 0, lastNow = null;
+
+function shownTime() {
+  // 3コマ打ち:表示時刻を 8枚/秒に量子化(= floor(t·24/3)·3/24)
+  if (state.koma && state.stage >= 4) return Math.floor(phase * 8) / 8;
+  return phase;
+}
+function idxAt(t) {
+  return Math.min(NF - 2, Math.max(1, Math.round(t * SIM)));
+}
+
+/* その時刻の中心高さ・縦横スケール・速度を返す */
+function ballShape() {
+  if (state.stage <= 2) return { yc: H0, sx: 1, sy: 1, v: 0, t: 0 };
+  const src = state.stage >= 5 ? yAnim : yBounce;
+  const i = idxAt(shownTime());
+  const v = (src[i + 1] - src[i - 1]) * SIM / 2;
+  let yc = src[i], sy = 1;
+  if (state.stage >= 5) {                            // つぶしと伸ばし
+    if (yc < R) {                                    // 床にめり込んだ分だけ、つぶす
+      const pen = R - yc;
+      sy = Math.max(0.5, 1 - 0.9 * pen / R);
+      yc = R * sy;                                   // 底面を床に付ける
+    } else {                                         // 空中:速いほど縦に伸びる
+      sy = 1 + 0.35 * Math.min(Math.abs(v) / VMAX, 1);
+    }
+  }
+  return { yc, sy, sx: 1 / sy, v, t: shownTime() };
+}
+
+/* ---------- 描画 ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520;
+const SCALE = 210, GROUND_Y = 470, CX = RES / 2;     // 世界 → 画面
+const EDGE = '#3A4560';
+const BASE = [248, 216, 190];                        // 球の素の色
+const LD = (() => { const l = Math.hypot(1, 1, 1); return [1 / l, 1 / l, 1 / l]; })();  // 光は右上
+
+/* シェーディングは小さなオフスクリーンに描いて、透明合成で置く(床の線を消さないため) */
+const OS = 140;
+const osc = document.createElement('canvas');
+osc.width = osc.height = OS;
+const octx = osc.getContext('2d');
+const oimg = octx.createImageData(OS, OS);
+
+function shadeBall(scx, scy, rx, ry) {
+  // 移動する球:各ピクセルの法線は球中心からの相対で計算する。
+  // つぶし・伸ばし中も法線は円のまま(簡略)——輪郭の楕円だけで形を見せる。
+  const data = oimg.data;
+  const c0 = OS / 2;
+  const rEff = (rx + ry) / 2;                        // 輪郭のアンチエイリアス幅(近似)
+  let i = 0;
+  for (let py = 0; py < OS; py++) {
+    const Y = (c0 - (py + 0.5)) / ry;
+    for (let px = 0; px < OS; px++, i += 4) {
+      const X = ((px + 0.5) - c0) / rx;
+      const r2 = X * X + Y * Y;
+      const cov = Math.max(0, Math.min(1, (1 - Math.sqrt(r2)) * rEff + 0.5));
+      if (cov <= 0) { data[i + 3] = 0; continue; }
+      const nz = Math.sqrt(1 - Math.min(r2, 0.999999));
+      let d = Math.max(0, X * LD[0] + Y * LD[1] + nz * LD[2]);   // 第1回の式
+      if (state.cel && state.stage >= 4) d = Math.floor(Math.min(d, 0.999) * 4) / 3;  // 4段塗り
+      data[i]     = BASE[0] * d;
+      data[i + 1] = BASE[1] * d;
+      data[i + 2] = BASE[2] * d;
+      data[i + 3] = cov * 255;
+    }
+  }
+  octx.putImageData(oimg, 0, 0);
+  vctx.drawImage(osc, scx - OS / 2, scy - OS / 2);
+}
+
+function drawArrow(ctx, x0, y0, x1, y1, head) {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - head * Math.cos(a - 0.45), y1 - head * Math.sin(a - 0.45));
+  ctx.lineTo(x1 - head * Math.cos(a + 0.45), y1 - head * Math.sin(a + 0.45));
+  ctx.closePath(); ctx.fill();
+}
+function haloArrow(ctx, x0, y0, x1, y1, head, color, width) {
+  ctx.strokeStyle = ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.lineWidth = width + 3.5;
+  drawArrow(ctx, x0, y0, x1, y1, head + 3);
+  ctx.strokeStyle = ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  drawArrow(ctx, x0, y0, x1, y1, head);
+}
+function haloText(ctx, text, x, y, color) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+function render() {
+  vctx.fillStyle = '#FFFFFF';
+  vctx.fillRect(0, 0, RES, RES);
+  // 床の線
+  vctx.strokeStyle = '#B9C2D0';
+  vctx.lineWidth = 2;
+  vctx.beginPath(); vctx.moveTo(24, GROUND_Y); vctx.lineTo(RES - 24, GROUND_Y); vctx.stroke();
+
+  const { yc, sx, sy } = ballShape();
+  const scx = CX, scy = GROUND_Y - yc * SCALE;
+  const rx = R * SCALE * sx, ry = R * SCALE * sy;
+
+  if (state.stage === 1) {
+    // ① 空間:輪郭線だけのワイヤ表示+座標の補助線
+    vctx.setLineDash([5, 5]);
+    vctx.strokeStyle = '#9AA5B8'; vctx.lineWidth = 1.5;
+    vctx.beginPath(); vctx.moveTo(scx, scy); vctx.lineTo(scx, GROUND_Y); vctx.stroke();
+    vctx.setLineDash([]);
+    vctx.strokeStyle = EDGE; vctx.lineWidth = 2.5;
+    vctx.beginPath(); vctx.arc(scx, scy, R * SCALE, 0, Math.PI * 2); vctx.stroke();
+    vctx.fillStyle = EDGE;
+    vctx.beginPath(); vctx.arc(scx, scy, 3, 0, Math.PI * 2); vctx.fill();
+    vctx.font = '14px ui-monospace, Menlo, monospace';
+    vctx.textAlign = 'left';
+    haloText(vctx, '中心 (0, 1.50)  半径 0.13', scx + 40, scy + 5, EDGE);
+    haloText(vctx, '高さ 1.50', scx + 10, (scy + GROUND_Y) / 2, '#7C8AA0');
+  } else {
+    // ②〜:拡散シェーディング(+セルルック/つぶし伸ばし)
+    shadeBall(scx, scy, rx, ry);
+    vctx.strokeStyle = EDGE; vctx.lineWidth = 2.5;
+    vctx.beginPath(); vctx.ellipse(scx, scy, rx, ry, 0, 0, Math.PI * 2); vctx.stroke();
+    // 光の向きの矢印(右上から)
+    haloArrow(vctx, 468, 52, 415, 105, 10, '#2B7FD4', 3);
+    vctx.font = '13px sans-serif';
+    vctx.textAlign = 'right';
+    haloText(vctx, '光 L = (1, 1, 1)', 470, 40, '#2B7FD4');
+  }
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+let dynY = null, dynTog = null;
+
+function yLineText() {
+  const y = state.stage <= 2 ? H0 : ballShape().yc;
+  return `const 中心 = { x: 0, y: ${y.toFixed(2)} };   // 世界座標(高さ m)`;
+}
+function togLineText() {
+  return `const セルルック = ${state.cel}, コマ打ち = ${state.koma};   // ← トグル`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  add('// ① 空間(第2〜6回):置き場所を「数」で決める');
+  add(yLineText(), (s === 1 ? 'hl ' : '') + 'dyny');
+  add('const 半径 = 0.13;');
+  add('// 世界座標 → 画面座標(拡大して、上下を反転)');
+  add('画面x = 260 + 中心.x * 210;');
+  add('画面y = 470 - 中心.y * 210;', s === 1 ? 'hl' : '');
+  if (s === 1) add('輪郭の円を描く(画面x, 画面y, 半径 * 210);   // まだ輪郭だけ', 'hl');
+  if (s >= 2) {
+    add('');
+    add('// ② 光(第7〜10回):第1回の式が、もう一度', s === 2 ? 'add' : '');
+    add('const L = 長さ1にする(1, 1, 1);        // 光は右上', s === 2 ? 'add' : '');
+    add('for (円の中の各ピクセル) {', s === 2 ? 'add' : '');
+    add('  N = (ピクセル - 中心) / 半径;         // 面の向き(法線)', s === 2 ? 'add' : '');
+    add('  明るさ = Math.max(0, N・L);           // ★ 内積ひとつ(第1回)', s === 2 ? 'add' : '');
+    if (s >= 4) add('  if (セルルック) 明るさ = Math.floor(明るさ * 4) / 3;  // ★ 4段塗り', s === 4 ? 'add' : '');
+    add('  色 = 素の色 × 明るさ;', s === 2 ? 'add' : '');
+    add('}', s === 2 ? 'add' : '');
+  }
+  if (s >= 3) {
+    add('');
+    add('// ③ 時間(第11〜13回):高校物理で動かす', s === 3 ? 'add' : '');
+    add('v = v - 6.0 * dt;                      // 重力', s === 3 ? 'add' : '');
+    add('y = y + v * dt;', s === 3 ? 'add' : '');
+    add('if (y < 半径) { y = 半径;  v = -v * 0.62; }  // 反発係数', s === 3 ? 'add' : '');
+  }
+  if (s >= 4) {
+    add('');
+    add('// ④ 様式(第9回):できるから、外せる', s === 4 ? 'add' : '');
+    add(togLineText(), (s === 4 ? 'add ' : '') + 'dyntog');
+    add('if (コマ打ち) 表示時刻 = Math.floor(時刻 * 8) / 8;  // ★ 3コマ打ち = 8枚/秒', s === 4 ? 'add' : '');
+  }
+  if (s >= 5) {
+    add('');
+    add('// ⑤ 全部のせ(第11回):誇張フィルタ+つぶし・伸ばし', s === 5 ? 'add' : '');
+    add('y = 物理y - 1.5 * 0.12² * 加速度(ならした物理, 時刻);', s === 5 ? 'add' : '');
+    add('縦 = 空中 ? 1 + 0.35 * 速さ / 最大速さ : つぶれ(めり込み);', s === 5 ? 'add' : '');
+    add('横 = 1 / 縦;                           // 体積は保つ → 楕円に描く', s === 5 ? 'add' : '');
+    add('// 法線は円のまま(簡略)——輪郭だけ、つぶして伸ばす', s === 5 ? 'add' : '');
+  }
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else|true|false)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynY = codeEl.querySelector('.cl.dyny code');
+  dynTog = codeEl.querySelector('.cl.dyntog code');
+}
+
+// ライブ数値は dyn の行だけ書き換える(全再構築は add の点滅が再発火するので禁止)
+let lastYText = '';
+function updateDynY() {
+  if (!dynY) return;
+  const t = yLineText();
+  if (t === lastYText) return;
+  lastYText = t;
+  dynY.innerHTML = highlightJS(t);
+}
+function updateDynTog() {
+  if (dynTog) dynTog.innerHTML = highlightJS(togLineText());
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+let lastReadout = '';
+function updateReadout() {
+  let html;
+  if (state.stage === 1) {
+    html = '中心 (x, y) = (0, <b>1.50</b>)、半径 <b>0.13</b>。数を変えれば、置き場所が変わる。';
+  } else if (state.stage === 2) {
+    html = '明るさ = max(0, N·L̂)。L̂ = (1,1,1)/√3(右上)。第1回とまったく同じ式。';
+  } else {
+    const b = ballShape();
+    html = `t = <b>${b.t.toFixed(2)}s</b>  y = <b>${b.yc.toFixed(2)}m</b>  v = <b>${b.v.toFixed(2)}m/s</b>`;
+    if (state.stage === 4) {
+      html += `  セルルック <b>${state.cel ? 'ON' : 'OFF'}</b> / コマ打ち <b>${state.koma ? 'ON' : 'OFF'}</b>`;
+    }
+    if (state.stage >= 5) {
+      html += `  縦×横 = <b>${b.sy.toFixed(2)}</b>×<b>${b.sx.toFixed(2)}</b>`;
+    }
+  }
+  if (html !== lastReadout) { lastReadout = html; readout.innerHTML = html; }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+const playBtn = document.getElementById('play-btn');
+const restartBtn = document.getElementById('restart-btn');
+const celBtn = document.getElementById('cel-btn');
+const komaBtn = document.getElementById('koma-btn');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function syncToggles() {
+  celBtn.classList.toggle('active', state.cel);
+  celBtn.setAttribute('aria-pressed', String(state.cel));
+  komaBtn.classList.toggle('active', state.koma);
+  komaBtn.setAttribute('aria-pressed', String(state.koma));
+}
+
+function setStage(n) {
+  n = Math.max(1, Math.min(5, n));
+  const prev = state.stage;
+  state.stage = n;
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === n));
+  noteEl.textContent = STAGES[n - 1].note;
+  document.getElementById('style-row').classList.toggle('hidden', n < 4);
+  playBtn.disabled = restartBtn.disabled = n < 3;
+  state.cel = state.koma = (n === 5);       // ④は OFF から手で入れる/⑤は全部のせ
+  syncToggles();
+  if (n < 3) { setPlaying(false); phase = 0; }
+  else if (prev < 3 || !state.playing) { if (prev < 3) phase = 0; setPlaying(true); }
+  lastYText = '';
+  buildCode();
+  updateReadout();
+}
+
+/* ---------- コントロール ---------- */
+function setPlaying(on) {
+  state.playing = on;
+  playBtn.textContent = on ? '⏸ 一時停止(Space)' : '▶ 再生(Space)';
+  lastNow = null;
+}
+playBtn.addEventListener('click', () => setPlaying(!state.playing));
+restartBtn.addEventListener('click', () => { phase = 0; lastNow = null; });
+
+celBtn.addEventListener('click', () => {
+  if (state.stage < 4) return;
+  state.cel = !state.cel;
+  syncToggles(); updateDynTog(); updateReadout();
+});
+komaBtn.addEventListener('click', () => {
+  if (state.stage < 4) return;
+  state.koma = !state.koma;
+  syncToggles(); updateDynTog(); updateReadout();
+});
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '5') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+  else if (ev.key === ' ') { ev.preventDefault(); if (state.stage >= 3) setPlaying(!state.playing); }
+  else if (ev.key === 'r' || ev.key === 'R') { phase = 0; lastNow = null; }
+  else if ((ev.key === 'c' || ev.key === 'C') && state.stage >= 4) celBtn.click();
+  else if ((ev.key === 'k' || ev.key === 'K') && state.stage >= 4) komaBtn.click();
+});
+
+/* ---------- メインループ ---------- */
+function tick(now) {
+  if (state.playing && state.stage >= 3) {
+    if (lastNow !== null) phase = (phase + (now - lastNow) / 1000) % T;
+    lastNow = now;
+  } else {
+    lastNow = null;
+  }
+  render();
+  updateDynY();
+  updateReadout();
+  requestAnimationFrame(tick);
+}
+
+/* ---------- 起動 ---------- */
+setStage(1);
+requestAnimationFrame(tick);
+</script>

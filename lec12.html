@@ -1,0 +1,643 @@
+<title>気持ちいい動きの正体 — CG第12回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11px; font-weight:500; color:var(--sub); letter-spacing:.04em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10px; white-space:normal}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+  }
+</style>
+
+<header>
+  <h1>気持ちいい動きの正体<small>第12回 — 補間とイージング</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>5</kbd> / <kbd>←</kbd><kbd>→</kbd> 切替 <kbd>Space</kbd> 再生/停止</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果 — 上:動き / 下:時間-位置グラフ</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>動きのコントロール</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <button class="btn" id="play-btn">⏸ 一時停止(Space)</button>
+          <button class="btn" id="restart-btn">↺ 最初から(R)</button>
+          <button class="btn" id="slow-btn">🐢 スロー(0.35×)</button>
+        </div>
+        <div class="ctl-row hidden" id="ease-row">
+          <label>加速のさせ方</label>
+          <button class="btn ez active" data-ez="in">イーズイン t²</button>
+          <button class="btn ez" data-ez="out">イーズアウト</button>
+          <button class="btn ez" data-ez="both">両方(smoothstep)</button>
+        </div>
+        <div id="bez-rows" class="hidden" style="display:flex; flex-direction:column; gap:10px">
+          <div class="ctl-row">
+            <label for="sx1">ハンドル1 x1</label>
+            <input type="range" id="sx1" min="0" max="1" step="0.01" value="0.25">
+            <output id="ox1">0.25</output>
+          </div>
+          <div class="ctl-row">
+            <label for="sy1">ハンドル1 y1</label>
+            <input type="range" id="sy1" min="-0.5" max="1.5" step="0.01" value="0.10">
+            <output id="oy1">0.10</output>
+          </div>
+          <div class="ctl-row">
+            <label for="sx2">ハンドル2 x2</label>
+            <input type="range" id="sx2" min="0" max="1" step="0.01" value="0.25">
+            <output id="ox2">0.25</output>
+          </div>
+          <div class="ctl-row">
+            <label for="sy2">ハンドル2 y2</label>
+            <input type="range" id="sy2" min="-0.5" max="1.5" step="0.01" value="1.00">
+            <output id="oy2">1.00</output>
+          </div>
+        </div>
+        <div class="ctl-row hidden" id="preset-row">
+          <label>プリセット</label>
+          <button class="btn" id="preset-over">オーバーシュート(y2 = 1.4)</button>
+          <button class="btn" id="preset-ease">標準の ease に戻す</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — t を「曲線」に通してから混ぜる
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = {
+  stage: 1,
+  ease: 'in',                              // ②の切替:in / out / both
+  bx1: 0.25, by1: 0.10, bx2: 0.25, by2: 1.00,   // ③のベジェハンドル
+  playing: true,
+  slow: false,
+  fontIdx: 1,
+};
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 線形補間', note:'キーフレームは「はじめ」と「おわり」の2枚だけ。あいだは lerp(混ぜ合わせ)で均等に埋める。グラフは直線——正確だが機械的で、スッと動いてピタッと止まる。' },
+  { label:'② イーズイン / アウト', note:'t を一度カーブに通してから lerp に渡す。それだけで、ゆっくり入って、ゆっくり抜ける。現実の物は急に動き出せない——目はそれを知っている。ボタンで3種類を見比べる。' },
+  { label:'③ 自分でカーブを作る', note:'3次ベジェ曲線(CSS の cubic-bezier と同じ)。2つのハンドル P1・P2 をスライダーで動かすと、グラフの形 = 動きの性格が変わる。' },
+  { label:'④ 並べて比較', note:'上 = 線形、下 = いまのカーブ。同じ 1.2 秒、同じ距離、違うのは途中の配分だけ。その配分の差が「気持ちよさ」の差になる。' },
+  { label:'⑤ 行き過ぎて戻る', note:'ハンドルの y を枠の外へ(y2 = 1.4)。位置が 1 を追い越してから戻る = オーバーシュート。第11回の誇張フィルタと同じ発想——気持ちよさは物理の少し外側にある。' },
+];
+
+/* ---------- イージングの計算 ---------- */
+const DUR = 1.2, HOLD = 0.35, CYCLE = 2 * (DUR + HOLD);
+const X0 = 90, X1 = 430;
+
+function bezX(u) { const w = 1 - u; return 3*w*w*u*state.bx1 + 3*w*u*u*state.bx2 + u*u*u; }
+function bezY(u) { const w = 1 - u; return 3*w*w*u*state.by1 + 3*w*u*u*state.by2 + u*u*u; }
+// t のパラメータ曲線:横軸 x(u) = t になる u を二分法で求め、縦軸 y(u) を返す
+// (x1, x2 ∈ [0,1] なら x(u) は単調増加なので、二分法で必ず見つかる)
+function bezierE(t) {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 28; i++) {
+    const m = (lo + hi) / 2;
+    if (bezX(m) < t) lo = m; else hi = m;
+  }
+  return bezY((lo + hi) / 2);
+}
+function easeVal(t) {
+  if (state.stage === 1) return t;
+  if (state.stage === 2) {
+    if (state.ease === 'in') return t * t;
+    if (state.ease === 'out') return 1 - (1 - t) * (1 - t);
+    return t * t * (3 - 2 * t);
+  }
+  return bezierE(t);
+}
+let maxE = 1;
+function recomputeMaxE() {
+  let m = 1;
+  for (let i = 0; i <= 240; i++) m = Math.max(m, easeVal(i / 240));
+  maxE = m;
+}
+
+/* ---------- 再生時刻(1.2秒で往復+端で少し停止) ---------- */
+let phase = 0, lastNow = null;
+function tOfPhase(ph) {
+  if (ph < DUR) return ph / DUR;
+  if (ph < DUR + HOLD) return 1;
+  if (ph < DUR + HOLD + DUR) return 1 - (ph - DUR - HOLD) / DUR;
+  return 0;
+}
+
+/* ---------- 描画 ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520;
+const CARD = '#F2C89E', EDGE = '#3A4560';
+const GL = 58, GR = 492, GT = 230, GB = 486;      // グラフ領域
+const EMIN = -0.45, EMAX = 1.5;                   // 位置 e の表示範囲
+const gx = t => GL + t * (GR - GL);
+const gy = e => GB - (e - EMIN) / (EMAX - EMIN) * (GB - GT);
+
+function line(x0, y0, x1, y1) {
+  vctx.beginPath(); vctx.moveTo(x0, y0); vctx.lineTo(x1, y1); vctx.stroke();
+}
+function rrectPath(x, y, w, h, r) {
+  vctx.beginPath();
+  vctx.moveTo(x + r, y);
+  vctx.arcTo(x + w, y, x + w, y + h, r);
+  vctx.arcTo(x + w, y + h, x, y + h, r);
+  vctx.arcTo(x, y + h, x, y, r);
+  vctx.arcTo(x, y, x + w, y, r);
+  vctx.closePath();
+}
+function haloText(text, x, y, color) {
+  vctx.lineWidth = 4; vctx.strokeStyle = 'rgba(255,255,255,.9)'; vctx.lineJoin = 'round';
+  vctx.strokeText(text, x, y);
+  vctx.fillStyle = color; vctx.fillText(text, x, y);
+}
+function drawCard(cx, cy, w, h, ghost) {
+  rrectPath(cx - w / 2, cy - h / 2, w, h, 12);
+  if (ghost) {
+    vctx.setLineDash([5, 4]);
+    vctx.strokeStyle = 'rgba(58,69,96,.30)'; vctx.lineWidth = 1.8; vctx.stroke();
+    vctx.setLineDash([]);
+    return;
+  }
+  vctx.fillStyle = CARD; vctx.fill();
+  vctx.strokeStyle = EDGE; vctx.lineWidth = 2.5; vctx.stroke();
+  // UI部品風の飾り(丸いアイコン+2行のテキスト)
+  vctx.fillStyle = 'rgba(58,69,96,.35)';
+  vctx.beginPath(); vctx.arc(cx - w / 2 + 18, cy, 7, 0, Math.PI * 2); vctx.fill();
+  vctx.strokeStyle = 'rgba(58,69,96,.30)'; vctx.lineWidth = 5; vctx.lineCap = 'round';
+  line(cx - w / 2 + 32, cy - 7, cx + w / 2 - 14, cy - 7);
+  line(cx - w / 2 + 32, cy + 8, cx + w / 2 - 26, cy + 8);
+  vctx.lineCap = 'butt';
+}
+function drawLaneRow(cy, e, label, small) {
+  const w = small ? 80 : 92, h = small ? 48 : 58;
+  const base = cy + h / 2 + 12;
+  vctx.strokeStyle = '#E0E5EE'; vctx.lineWidth = 2;
+  line(X0 - 50, base, X1 + 50, base);
+  vctx.strokeStyle = '#B9C2D0'; vctx.lineWidth = 1.5;
+  line(X0, base - 5, X0, base + 5);
+  line(X1, base - 5, X1, base + 5);
+  vctx.fillStyle = '#9AA5B8'; vctx.font = '11px ui-monospace, Menlo, monospace'; vctx.textAlign = 'center';
+  vctx.fillText('x0', X0, base + 16);
+  vctx.fillText('x1', X1, base + 16);
+  drawCard(X0, cy, w, h, true);      // キーフレームのゴースト
+  drawCard(X1, cy, w, h, true);
+  drawCard(X0 + (X1 - X0) * e, cy, w, h, false);
+  if (label) {
+    vctx.fillStyle = '#8A94A8'; vctx.font = '12.5px sans-serif'; vctx.textAlign = 'left';
+    vctx.fillText(label, X0 - 50, cy - h / 2 - 7);
+  }
+}
+
+function drawGraph(t) {
+  const s = state.stage;
+  vctx.fillStyle = '#8A94A8'; vctx.font = '11.5px sans-serif'; vctx.textAlign = 'left';
+  vctx.fillText('時間 t → 位置 e のグラフ', GL, GT - 8);
+  // 時間の目盛り
+  vctx.font = '11px ui-monospace, Menlo, monospace';
+  for (let k = 0; k <= 4; k++) {
+    const tt = k / 4;
+    vctx.strokeStyle = '#E4E9F1'; vctx.lineWidth = 1;
+    line(gx(tt), GT, gx(tt), GB);
+    vctx.fillStyle = '#9AA5B8'; vctx.textAlign = 'center';
+    vctx.fillText((tt * DUR).toFixed(1) + 's', gx(tt), GB + 14);
+  }
+  // 位置 0 と 1 の線
+  vctx.strokeStyle = '#C7CFDC'; vctx.lineWidth = 1.2;
+  line(GL, gy(0), GR, gy(0));
+  line(GL, gy(1), GR, gy(1));
+  vctx.fillStyle = '#9AA5B8'; vctx.textAlign = 'left';
+  vctx.fillText('位置 1(右端)', GL + 4, gy(1) - 5);
+  vctx.fillText('位置 0(左端)', GL + 4, gy(0) - 5);
+
+  // 線形の参照(②以降・青い点線)
+  if (s >= 2) {
+    vctx.strokeStyle = '#2B7FD4'; vctx.lineWidth = 1.6; vctx.setLineDash([5, 5]);
+    line(gx(0), gy(0), gx(1), gy(1));
+    vctx.setLineDash([]);
+    vctx.font = '11px sans-serif';
+    haloText('線形', gx(0.66), gy(0.60), '#2B7FD4');
+  }
+  // ベジェのハンドルと制御線(③以降)
+  if (s >= 3) {
+    vctx.strokeStyle = '#1E9E6C'; vctx.lineWidth = 1.8;
+    line(gx(0), gy(0), gx(state.bx1), gy(state.by1));
+    vctx.strokeStyle = '#2B7FD4';
+    line(gx(1), gy(1), gx(state.bx2), gy(state.by2));
+    const hs = [
+      [state.bx1, state.by1, '#1E9E6C', 'P1'],
+      [state.bx2, state.by2, '#2B7FD4', 'P2'],
+    ];
+    for (const [hx, hy, col, lab] of hs) {
+      vctx.fillStyle = '#FFFFFF';
+      vctx.beginPath(); vctx.arc(gx(hx), gy(hy), 8, 0, Math.PI * 2); vctx.fill();
+      vctx.fillStyle = col;
+      vctx.beginPath(); vctx.arc(gx(hx), gy(hy), 5.5, 0, Math.PI * 2); vctx.fill();
+      vctx.font = '11px ui-monospace, Menlo, monospace'; vctx.textAlign = 'left';
+      haloText(lab, gx(hx) + 10, gy(hy) + 4, col);
+    }
+  }
+  // いまのカーブ(実線・オレンジ)
+  vctx.strokeStyle = '#E8951F'; vctx.lineWidth = 3;
+  vctx.beginPath();
+  for (let i = 0; i <= 150; i++) {
+    const tt = i / 150, yy = gy(easeVal(tt));
+    if (i === 0) vctx.moveTo(gx(tt), yy); else vctx.lineTo(gx(tt), yy);
+  }
+  vctx.stroke();
+  // 現在時刻のカーソル
+  vctx.strokeStyle = 'rgba(224,130,31,.55)'; vctx.lineWidth = 1.5;
+  line(gx(t), GT, gx(t), GB);
+  if (s >= 4) {                       // 比較中は線形の点も打つ
+    vctx.fillStyle = '#2B7FD4';
+    vctx.beginPath(); vctx.arc(gx(t), gy(t), 4, 0, Math.PI * 2); vctx.fill();
+  }
+  vctx.fillStyle = '#E0821F';
+  vctx.beginPath(); vctx.arc(gx(t), gy(easeVal(t)), 5.5, 0, Math.PI * 2); vctx.fill();
+  vctx.strokeStyle = '#FFFFFF'; vctx.lineWidth = 1.5;
+  vctx.beginPath(); vctx.arc(gx(t), gy(easeVal(t)), 5.5, 0, Math.PI * 2); vctx.stroke();
+}
+
+function render(t) {
+  vctx.fillStyle = '#FFFFFF';
+  vctx.fillRect(0, 0, RES, RES);
+  if (state.stage >= 4) {
+    drawLaneRow(74, t, '線形', true);
+    drawLaneRow(168, easeVal(t), 'いまのカーブ', true);
+  } else {
+    drawLaneRow(112, easeVal(t), null, false);
+  }
+  drawGraph(t);
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+let dynE = null, dynB = null;
+const f2 = v => v.toFixed(2);
+
+function easeLineText() {
+  if (state.ease === 'in') return 'e = t * t;                      // ★ イーズイン:出だしを ためる';
+  if (state.ease === 'out') return 'e = 1 - (1-t) * (1-t);         // ★ イーズアウト:終わりを ならす';
+  return 'e = t*t * (3 - 2*t);            // ★ 両方:smoothstep(3t² − 2t³)';
+}
+function bezLineText() {
+  return `const P1 = (${f2(state.bx1)}, ${f2(state.by1)}),  P2 = (${f2(state.bx2)}, ${f2(state.by2)});  // ← スライダー`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+  add('// キーフレーム:はじめと終わり、2枚だけ決める');
+  add('const x0 = 90, x1 = 430;          // 位置のキーフレーム');
+  add('const T = 1.2;                     // かける時間(秒)');
+  add('let t = 経過時間 / T;              // 進み具合(0 → 1)');
+  add('');
+  if (s <= 2) add('let e = t;                         // 線形:t をそのまま使う', s === 1 ? 'hl' : '');
+  if (s === 2) add(easeLineText(), 'add dyne');
+  if (s >= 3) {
+    add('// 3次ベジェ:CSS の cubic-bezier(x1, y1, x2, y2) と同じ', s === 3 ? 'add' : '');
+    add(bezLineText(), (s === 3 ? 'add ' : '') + 'dynb');
+    add('u = 「横 x(u) = t」になる u を二分法でさがす;', s === 3 ? 'add' : '');
+    add('e = 縦 y(u);                      // 曲線の高さ = 進み具合', s === 3 ? 'add' : '');
+  }
+  add('');
+  if (s <= 3) {
+    add('x = x0 + (x1 - x0) * e;           // lerp:e で混ぜ合わせる', s === 1 ? 'hl' : '');
+  } else {
+    add('// ★ 並べて比較:同じ t から、2つの動きを作る', s === 4 ? 'add' : '');
+    add('x上 = x0 + (x1 - x0) * t;         // 線形', s === 4 ? 'add' : '');
+    add('x下 = x0 + (x1 - x0) * e;         // いまのカーブ', s === 4 ? 'add' : '');
+  }
+  if (s >= 5) {
+    add('');
+    add('// ★ ハンドルを枠の外へ(y2 = 1.4):1 を追い越してから戻る', s === 5 ? 'add' : '');
+    add('// 第11回の誇張フィルタと同じ発想。気持ちよさは物理の少し外側', s === 5 ? 'add' : '');
+  }
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynE = codeEl.querySelector('.cl.dyne code');
+  dynB = codeEl.querySelector('.cl.dynb code');
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+const EZ_NAME = { in: 'イーズイン e = t²', out: 'イーズアウト e = 1−(1−t)²', both: 'smoothstep e = 3t²−2t³' };
+
+function updateReadout(t) {
+  const e = easeVal(t);
+  const s = state.stage;
+  if (s === 1) {
+    readout.innerHTML = `t = <b>${t.toFixed(2)}</b> → e = t = <b>${e.toFixed(2)}</b> → x = ${Math.round(X0 + (X1 - X0) * e)}px。配分はずっと均等。`;
+  } else if (s === 2) {
+    readout.innerHTML = `${EZ_NAME[state.ease]} : t = <b>${t.toFixed(2)}</b> → e = <b>${e.toFixed(2)}</b>`;
+  } else if (s === 3) {
+    readout.innerHTML = `cubic-bezier(<b>${f2(state.bx1)}, ${f2(state.by1)}, ${f2(state.bx2)}, ${f2(state.by2)}</b>) t = ${t.toFixed(2)} → e = <b>${e.toFixed(2)}</b>`;
+  } else if (s === 4) {
+    const d = e - t;
+    readout.innerHTML = `t = <b>${t.toFixed(2)}</b> → 線形 <b>${t.toFixed(2)}</b> / カーブ <b>${e.toFixed(2)}</b>(差 ${d >= 0 ? '+' : ''}${d.toFixed(2)})`;
+  } else {
+    readout.innerHTML = `最大 e = <b>${maxE.toFixed(2)}</b>(${Math.round((maxE - 1) * 100)}% 行き過ぎてから戻る) いま e = <b>${e.toFixed(2)}</b>`;
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(5, n));
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === state.stage));
+  noteEl.textContent = STAGES[state.stage - 1].note;
+  document.getElementById('ease-row').classList.toggle('hidden', state.stage !== 2);
+  document.getElementById('bez-rows').classList.toggle('hidden', state.stage < 3);
+  document.getElementById('preset-row').classList.toggle('hidden', state.stage !== 5);
+  if (state.stage === 5) applyBez(0.40, 0.00, 0.50, 1.40);   // オーバーシュートを最初から見せる
+  recomputeMaxE();
+  buildCode();
+}
+
+/* ---------- コントロール ---------- */
+const playBtn = document.getElementById('play-btn');
+function setPlaying(on) {
+  state.playing = on;
+  playBtn.textContent = on ? '⏸ 一時停止(Space)' : '▶ 再生(Space)';
+  lastNow = null;
+}
+playBtn.addEventListener('click', () => setPlaying(!state.playing));
+document.getElementById('restart-btn').addEventListener('click', () => { phase = 0; lastNow = null; });
+const slowBtn = document.getElementById('slow-btn');
+slowBtn.addEventListener('click', () => {
+  state.slow = !state.slow;
+  slowBtn.classList.toggle('active', state.slow);
+});
+
+document.querySelectorAll('.btn.ez').forEach(b => {
+  b.addEventListener('click', () => {
+    state.ease = b.dataset.ez;
+    document.querySelectorAll('.btn.ez').forEach(x => x.classList.toggle('active', x === b));
+    if (dynE) dynE.innerHTML = highlightJS(easeLineText());
+    recomputeMaxE();
+  });
+});
+
+const BZ = [
+  ['sx1', 'ox1', 'bx1'],
+  ['sy1', 'oy1', 'by1'],
+  ['sx2', 'ox2', 'bx2'],
+  ['sy2', 'oy2', 'by2'],
+];
+BZ.forEach(([sid, oid, key]) => {
+  const sl = document.getElementById(sid), out = document.getElementById(oid);
+  sl.addEventListener('input', () => {
+    state[key] = parseFloat(sl.value);
+    out.value = f2(state[key]);
+    if (dynB) dynB.innerHTML = highlightJS(bezLineText());
+    recomputeMaxE();
+  });
+});
+function applyBez(a, b, c, d) {
+  const vals = { bx1: a, by1: b, bx2: c, by2: d };
+  BZ.forEach(([sid, oid, key]) => {
+    state[key] = vals[key];
+    document.getElementById(sid).value = vals[key];
+    document.getElementById(oid).value = f2(vals[key]);
+  });
+  if (dynB) dynB.innerHTML = highlightJS(bezLineText());
+  recomputeMaxE();
+}
+document.getElementById('preset-over').addEventListener('click', () => applyBez(0.40, 0.00, 0.50, 1.40));
+document.getElementById('preset-ease').addEventListener('click', () => applyBez(0.25, 0.10, 0.25, 1.00));
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '5') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+  else if (ev.key === ' ') { ev.preventDefault(); setPlaying(!state.playing); }
+  else if (ev.key === 'r' || ev.key === 'R') { phase = 0; lastNow = null; }
+  else if (ev.key === 's' || ev.key === 'S') { state.slow = !state.slow; slowBtn.classList.toggle('active', state.slow); }
+});
+
+/* ---------- メインループ ---------- */
+function tick(now) {
+  if (state.playing) {
+    if (lastNow !== null) phase = (phase + (now - lastNow) / 1000 * (state.slow ? 0.35 : 1)) % CYCLE;
+    lastNow = now;
+  } else {
+    lastNow = null;
+  }
+  const t = tOfPhase(phase % CYCLE);
+  render(t);
+  updateReadout(t);
+  requestAnimationFrame(tick);
+}
+
+/* ---------- 起動 ---------- */
+setStage(1);
+setPlaying(true);
+requestAnimationFrame(tick);
+</script>

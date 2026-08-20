@@ -1,0 +1,678 @@
+<title>光を1本ずつ追いかける — CG第8回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+  #readout .miss{color:var(--cyan)}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10.5px}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+  }
+</style>
+
+<header>
+  <h1>光を1本ずつ追いかける<small>コンピュータグラフィックス 第8回 実演 — レイトレーシングと影</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>5</kbd> / <kbd>←</kbd><kbd>→</kbd> で切替</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果 — 横から見た平面図(上:光源 / 下:床)</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>光源と光線のコントロール</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="slx">光源の位置(x)</label>
+          <input type="range" id="slx" min="60" max="460" step="2" value="200">
+          <output id="olx">200</output>
+        </div>
+        <div class="ctl-row" id="t-row">
+          <label for="stx">床の点 P(x)</label>
+          <input type="range" id="stx" min="26" max="494" step="2" value="300">
+          <output id="otx">300</output>
+        </div>
+        <div class="ctl-row hidden" id="rays-row">
+          <label for="srays">光線の本数</label>
+          <input type="range" id="srays" min="5" max="60" step="1" value="24">
+          <output id="orays">24</output>
+        </div>
+        <div class="ctl-row hidden" id="mirror-row">
+          <button class="btn active" id="mirror-btn" aria-pressed="true">🪞 右壁を鏡にする:ON(M)</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — 光線を1本ずつ追いかける
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = {
+  stage: 1,
+  lx: 200,        // 光源の x(y は 46 で固定)
+  tx: 300,        // ①②で選ぶ床の点の x
+  rays: 24,       // ④で描く光線の本数
+  mirror: true,   // ⑤右壁を鏡にする
+  fontIdx: 1,
+};
+const FONT_SIZES = [15, 18, 21, 24];
+
+const STAGES = [
+  { label:'① 光線は直線', note:'光源から床の1点 P へ、光線=ただの線分を1本引く。いまは円を素通りしている——おかしいですよね。スライダーで P を動かしてみて。' },
+  { label:'② 遮られたら影', note:'線分と円が交わるかは、二次方程式の判別式 b²−4ac で分かる(高校数学!)。D ≥ 0 なら当たり:光線は円で止まり、届かなかった床の点 P は暗くなる=影。' },
+  { label:'③ 床ぜんぶに光線', note:'床の200個の点それぞれに、同じ判定をする。遮られた区間=影の帯が浮かび上がる。光源を左右に動かすと、影が伸び縮みする。' },
+  { label:'④ 光線を見る', note:'ふだん見えない光線を、本数スライダーでうすく可視化。レイトレーシング=この「1本ずつ追いかける」作業を、画面の全ピクセルでやること。' },
+  { label:'⑤ 鏡を置く', note:'右の壁を鏡に。鏡像の光源からたどった光線(入射角=反射角)が届く所は、影の中でも少し明るい=反射光。第1回の「陰と影は違う」——影の計算がこれ。' },
+];
+
+/* ---------- シーン(座標はすべて画面ピクセル) ---------- */
+const RES = 520;
+const LY = 46;                          // 光源の高さ(固定)
+const FY = 468;                         // 床の高さ
+const FX0 = 26, FX1 = 494, FN = 200;    // 床の範囲と点の数
+const C1 = { x: 210, y: 250, r: 46 };   // 障害物の円1
+const C2 = { x: 325, y: 320, r: 34 };   // 障害物の円2
+const WALL = { x: 500, y0: 28, y1: FY };// 右壁(⑤で鏡になる)
+
+/* ---------- 当たり判定(表示コードと同一の式) ---------- */
+// 線分 A + t·(B−A) を円の式に代入 → t の二次方程式 → 判別式
+function intersect(A, B, cir) {
+  const dx = B.x - A.x, dy = B.y - A.y;
+  const fx = A.x - cir.x, fy = A.y - cir.y;
+  const a = dx * dx + dy * dy;
+  const b = 2 * (fx * dx + fy * dy);
+  const c = fx * fx + fy * fy - cir.r * cir.r;
+  const D = b * b - 4 * a * c;                 // 判別式
+  if (D < 0) return null;                      // 交わらない
+  const t = (-b - Math.sqrt(D)) / (2 * a);     // 手前の交点
+  return (0 <= t && t <= 1) ? t : null;        // 線分の途中だけ「当たり」
+}
+function nearestT(A, B) {
+  const t1 = intersect(A, B, C1), t2 = intersect(A, B, C2);
+  if (t1 === null) return t2;
+  if (t2 === null) return t1;
+  return Math.min(t1, t2);
+}
+// 判別式の中身も見たいとき(②の読み出し用)
+function discOf(A, B, cir) {
+  const dx = B.x - A.x, dy = B.y - A.y;
+  const fx = A.x - cir.x, fy = A.y - cir.y;
+  const a = dx * dx + dy * dy;
+  const b = 2 * (fx * dx + fy * dy);
+  const c = fx * fx + fy * fy - cir.r * cir.r;
+  return { D: b * b - 4 * a * c, t: intersect(A, B, cir) };
+}
+
+/* ---------- 床の明るさ(③〜) ---------- */
+function floorX(i) { return FX0 + i * (FX1 - FX0) / (FN - 1); }
+
+// 鏡像光源からの反射光が床の点 P に届くか。届くなら壁の反射点 W を返す
+function mirrorHit(L, P) {
+  const M = { x: 2 * WALL.x - L.x, y: L.y };          // 鏡像(入射角=反射角)
+  const s = (WALL.x - M.x) / (P.x - M.x);
+  const W = { x: WALL.x, y: M.y + s * (P.y - M.y) };  // 壁の上の反射点
+  if (!(s > 0 && s < 1) || W.y < WALL.y0 || W.y > WALL.y1) return null;
+  if (nearestT(L, W) !== null || nearestT(W, P) !== null) return null;
+  return W;
+}
+
+function computeFloor() {
+  const L = { x: state.lx, y: LY };
+  const bright = new Float64Array(FN);
+  const refl = new Uint8Array(FN);
+  let shadowN = 0, reflN = 0;
+  for (let i = 0; i < FN; i++) {
+    const P = { x: floorX(i), y: FY };
+    const t = nearestT(L, P);
+    let b = (t === null) ? 1.0 : 0.15;         // 遮られた = 影
+    if (t !== null) shadowN++;
+    if (state.stage >= 5 && state.mirror) {
+      const W = mirrorHit(L, P);
+      if (W) {
+        b = Math.min(1, b + 0.45);             // 反射光のぶん明るく
+        refl[i] = 1;
+        if (t !== null) reflN++;
+      }
+    }
+    bright[i] = b;
+  }
+  return { bright, refl, shadowN, reflN };
+}
+
+/* ---------- 描画 ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+
+function haloText(ctx, text, x, y, color) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+function lampIcon(ctx, x, y) {
+  ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#FFB45C';
+  ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#E0821F'; ctx.lineWidth = 2;
+  for (let a = 0; a < 8; a++) {
+    const b = a * Math.PI / 4;
+    ctx.beginPath();
+    ctx.moveTo(x + 12 * Math.cos(b), y + 12 * Math.sin(b));
+    ctx.lineTo(x + 17 * Math.cos(b), y + 17 * Math.sin(b));
+    ctx.stroke();
+  }
+}
+function line(ctx, x0, y0, x1, y1) {
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+}
+function floorColor(b) {
+  return `rgb(${242 * b | 0},${200 * b | 0},${158 * b | 0})`;
+}
+
+function drawCircles(ctx) {
+  for (const [cir, name] of [[C1, '円1'], [C2, '円2']]) {
+    ctx.fillStyle = '#F2C89E'; ctx.strokeStyle = '#3A4560'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(cir.x, cir.y, cir.r, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.font = '13px ui-monospace, Menlo, monospace'; ctx.textAlign = 'center';
+    haloText(ctx, name, cir.x, cir.y + 5, '#3A4560');
+  }
+}
+
+function drawWall(ctx) {
+  if (state.mirror) {
+    ctx.strokeStyle = '#2B7FD4'; ctx.lineWidth = 5;
+    line(ctx, WALL.x, WALL.y0, WALL.x, WALL.y1);
+    ctx.strokeStyle = 'rgba(43,127,212,.5)'; ctx.lineWidth = 1.5;
+    for (let y = WALL.y0 + 6; y < WALL.y1; y += 16) {
+      line(ctx, WALL.x + 2, y, WALL.x + 12, y + 10);
+    }
+    ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+    haloText(ctx, '鏡', WALL.x - 14, (WALL.y0 + WALL.y1) / 2, '#2B7FD4');
+  } else {
+    ctx.strokeStyle = '#93A0B4'; ctx.lineWidth = 4;
+    line(ctx, WALL.x, WALL.y0, WALL.x, WALL.y1);
+    ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+    haloText(ctx, '壁', WALL.x - 14, (WALL.y0 + WALL.y1) / 2, '#5A6578');
+  }
+}
+
+function render() {
+  const ctx = vctx;
+  const s = state.stage;
+  const L = { x: state.lx, y: LY };
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, RES, RES);
+
+  if (s >= 5) drawWall(ctx);
+
+  /* 床 */
+  if (s >= 3) {
+    const { bright } = computeFloor();
+    const w = (FX1 - FX0) / (FN - 1);
+    for (let i = 0; i < FN; i++) {
+      ctx.fillStyle = floorColor(bright[i]);
+      ctx.fillRect(floorX(i) - w / 2, FY, w + 1, 10);
+    }
+  } else {
+    ctx.fillStyle = floorColor(1);
+    ctx.fillRect(FX0, FY, FX1 - FX0, 10);
+    if (s === 2) {
+      // 遮られていたら、床の点 P のまわりを暗く
+      const T = { x: state.tx, y: FY };
+      if (nearestT(L, T) !== null) {
+        ctx.fillStyle = floorColor(0.15);
+        ctx.fillRect(Math.max(FX0, state.tx - 9), FY, 18, 10);
+      }
+    }
+  }
+  ctx.strokeStyle = '#3A4560'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(FX0 - 1, FY, FX1 - FX0 + 2, 10);
+  ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillStyle = '#93A0B4';
+  ctx.fillText('床', FX0, FY + 32);
+
+  drawCircles(ctx);
+
+  /* 光線 */
+  if (s <= 2) {
+    const T = { x: state.tx, y: FY };
+    ctx.strokeStyle = 'rgba(224,130,31,.9)'; ctx.lineWidth = 2.5;
+    if (s === 1) {
+      line(ctx, L.x, L.y, T.x, T.y);        // 円のことは、まだ知らない
+    } else {
+      const t = nearestT(L, T);
+      if (t === null) {
+        line(ctx, L.x, L.y, T.x, T.y);
+      } else {
+        const hx = L.x + t * (T.x - L.x), hy = L.y + t * (T.y - L.y);
+        line(ctx, L.x, L.y, hx, hy);        // 光線は円で止まる
+        ctx.strokeStyle = 'rgba(90,101,120,.6)'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 6]);
+        line(ctx, hx, hy, T.x, T.y);        // 届かなかった部分
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#FF7B72';
+        ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#3A4560'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(hx, hy, 5, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    // 床の点 P の印
+    ctx.font = '13px ui-monospace, Menlo, monospace'; ctx.textAlign = 'center';
+    haloText(ctx, 'P', T.x, FY + 32, '#C06E10');
+    ctx.fillStyle = '#E0821F';
+    ctx.beginPath(); ctx.arc(T.x, FY + 5, 4, 0, Math.PI * 2); ctx.fill();
+  }
+  if (s >= 4) {
+    const m = state.rays;
+    for (let j = 0; j < m; j++) {
+      const P = { x: FX0 + j * (FX1 - FX0) / (m - 1), y: FY };
+      const t = nearestT(L, P);
+      ctx.strokeStyle = 'rgba(224,130,31,.28)'; ctx.lineWidth = 1.2;
+      if (t === null) {
+        line(ctx, L.x, L.y, P.x, P.y);
+      } else {
+        line(ctx, L.x, L.y, L.x + t * (P.x - L.x), L.y + t * (P.y - L.y));
+      }
+      if (s >= 5 && state.mirror && t !== null) {
+        const W = mirrorHit(L, P);
+        if (W) {
+          ctx.strokeStyle = 'rgba(43,127,212,.4)'; ctx.lineWidth = 1.2;
+          line(ctx, L.x, L.y, W.x, W.y);      // 光源 → 鏡
+          line(ctx, W.x, W.y, P.x, P.y);      // 鏡 → 影の中の点
+        }
+      }
+    }
+  }
+
+  lampIcon(ctx, L.x, L.y);
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+let dynEls = {};
+
+function lightLineText() {
+  return `const 光源 = { x: ${state.lx}, y:  46 };      // ← スライダー(左右に動く)`;
+}
+function targetLineText() {
+  return `const P    = { x: ${state.tx}, y: 468 };      // ← スライダー(床の上の点)`;
+}
+function raysLineText() {
+  return `// ★ 光線を ${state.rays} 本だけ、うすく描いて「見える化」`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  add('// 光は、まっすぐ進む:光源から床の点 P へ、線分を1本');
+  add(lightLineText(), 'dyn dynl');
+  if (s <= 2) add(targetLineText(), 'dyn dynp');
+  if (s === 1) {
+    add('');
+    add('線を引く(光源, P);', 'hl');
+    return L;
+  }
+  add('');
+  add('// 当たり判定:線分 光源 + t·(P−光源) を円の式へ → tの二次方程式', s === 2 ? 'add' : '');
+  add('function 交差(A, B, 円) {', s === 2 ? 'add' : '');
+  add('  const dx = B.x - A.x,  dy = B.y - A.y;', s === 2 ? 'add' : '');
+  add('  const fx = A.x - 円.x, fy = A.y - 円.y;', s === 2 ? 'add' : '');
+  add('  const a = dx*dx + dy*dy;', s === 2 ? 'add' : '');
+  add('  const b = 2 * (fx*dx + fy*dy);', s === 2 ? 'add' : '');
+  add('  const c = fx*fx + fy*fy - 円.r * 円.r;', s === 2 ? 'add' : '');
+  add('  const D = b*b - 4*a*c;              // ★ 判別式!(高校数学)', s === 2 ? 'add hl' : 'hl');
+  add('  if (D < 0) return null;             // 交わらない → 素通り', s === 2 ? 'add' : '');
+  add('  const t = (-b - Math.sqrt(D)) / (2*a);   // 手前の交点', s === 2 ? 'add' : '');
+  add('  return (0 <= t && t <= 1) ? t : null;    // 線分の途中だけ', s === 2 ? 'add' : '');
+  add('}', s === 2 ? 'add' : '');
+  add('');
+  if (s === 2) {
+    add('const t = 手前(交差(光源, P, 円1), 交差(光源, P, 円2));', 'add');
+    add('if (t === null)  線を引く(光源, P);        // 届いた', 'add');
+    add('else { 線を t で止める;  P を暗くする; }    // 遮られた = 影', 'add');
+    return L;
+  }
+  add('// ★ 床の 200 個の点、すべてに同じ判定をする', s === 3 ? 'add' : '');
+  add('for (const P of 床の点200個) {', s === 3 ? 'add' : '');
+  add('  const t = 手前(交差(光源, P, 円1), 交差(光源, P, 円2));', s === 3 ? 'add' : '');
+  add('  明るさ[P] = (t === null) ? 1.0 : 0.15;    // 影の帯', s === 3 ? 'add hl' : '');
+  add('}', s === 3 ? 'add' : '');
+  if (s >= 4) {
+    add('');
+    add(raysLineText(), (s === 4 ? 'add ' : '') + 'dyn dynn');
+    add('// (レイトレーシング = これを画面の全ピクセルでやる)', s === 4 ? 'add' : '');
+  }
+  if (s >= 5) {
+    add('');
+    add('// ★ 鏡(右の壁 x=500):鏡像の光源から、もう1本たどる', 'add');
+    add('const 鏡像 = { x: 2*500 - 光源.x, y: 光源.y };  // 入射角 = 反射角', 'add');
+    add('const W = 鏡像とPを結ぶ直線 と 壁の交点;', 'add');
+    add('if (遮られない(光源, W) && 遮られない(W, P))', 'add');
+    add('  明るさ[P] = Math.min(1, 明るさ[P] + 0.45);   // 影の中に反射光', 'add hl');
+  }
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|for|if|else|of|null)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynEls = {};
+  for (const c of ['dynl', 'dynp', 'dynn']) {
+    dynEls[c] = codeEl.querySelector('.cl.' + c + ' code');
+  }
+}
+
+// スライダー操作中は該当行だけ書き換える(全再構築だと add の点滅が再発火するため)
+function updateDyn(cls, text) {
+  if (dynEls[cls]) dynEls[cls].innerHTML = highlightJS(text);
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+const fmtD = D => (D >= 0 ? '+' : '') + D.toExponential(1);
+
+function updateReadout() {
+  const s = state.stage;
+  const L = { x: state.lx, y: LY };
+  if (s === 1) {
+    const len = Math.hypot(state.tx - state.lx, FY - LY);
+    readout.innerHTML = `光線:光源 (${state.lx}, 46) → P (${state.tx}, 468)。長さ <b>${len.toFixed(0)}px</b>。円のことは、まだ知らない。`;
+  } else if (s === 2) {
+    const T = { x: state.tx, y: FY };
+    const parts = [[C1, '円1'], [C2, '円2']].map(([cir, name]) => {
+      const { D, t } = discOf(L, T, cir);
+      return t !== null
+        ? `${name}: D = <b>${fmtD(D)}</b> → 当たる(t=${t.toFixed(2)})`
+        : `${name}: D = <span class="miss">${fmtD(D)}</span> → ${D < 0 ? '交わらない' : '線分の外'}`;
+    });
+    readout.innerHTML = parts.join(' / ');
+  } else if (s === 3) {
+    const { shadowN } = computeFloor();
+    readout.innerHTML = `床 200 点のうち、影は <b>${shadowN} 点</b>。光源を動かすと、帯が伸び縮みする。`;
+  } else if (s === 4) {
+    readout.innerHTML = `表示中の光線 = <b>${state.rays} 本</b>。計算は床の200点ぶん——レイトレーシングは、これを全ピクセルでやる。`;
+  } else {
+    if (!state.mirror) {
+      readout.innerHTML = '鏡 OFF:影はまっ暗(0.15)のまま。ボタンで鏡を ON に。';
+    } else {
+      const { shadowN, reflN } = computeFloor();
+      readout.innerHTML = `影 ${shadowN} 点のうち <b>${reflN} 点</b>に反射光が届いた(明るさ 0.15 → <b>0.60</b>)。`;
+    }
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(5, n));
+  const s = state.stage;
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === s));
+  noteEl.textContent = STAGES[s - 1].note;
+  document.getElementById('t-row').classList.toggle('hidden', s > 2);
+  document.getElementById('rays-row').classList.toggle('hidden', s < 4);
+  document.getElementById('mirror-row').classList.toggle('hidden', s < 5);
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+
+/* ---------- 再描画(フレーム間引き) ---------- */
+let pending = false;
+function requestRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => {
+    pending = false;
+    render();
+  });
+}
+
+/* ---------- コントロール ---------- */
+const slx = document.getElementById('slx'), olx = document.getElementById('olx');
+slx.addEventListener('input', () => {
+  state.lx = parseInt(slx.value, 10); olx.value = String(state.lx);
+  updateDyn('dynl', lightLineText());
+  updateReadout(); requestRender();
+});
+
+const stx = document.getElementById('stx'), otx = document.getElementById('otx');
+stx.addEventListener('input', () => {
+  state.tx = parseInt(stx.value, 10); otx.value = String(state.tx);
+  updateDyn('dynp', targetLineText());
+  updateReadout(); requestRender();
+});
+
+const srays = document.getElementById('srays'), orays = document.getElementById('orays');
+srays.addEventListener('input', () => {
+  state.rays = parseInt(srays.value, 10); orays.value = String(state.rays);
+  updateDyn('dynn', raysLineText());
+  updateReadout(); requestRender();
+});
+
+const mirrorBtn = document.getElementById('mirror-btn');
+function setMirror(on) {
+  state.mirror = on;
+  mirrorBtn.textContent = on ? '🪞 右壁を鏡にする:ON(M)' : '🪞 右壁を鏡にする:OFF(M)';
+  mirrorBtn.classList.toggle('active', on);
+  mirrorBtn.setAttribute('aria-pressed', String(on));
+  updateReadout(); requestRender();
+}
+mirrorBtn.addEventListener('click', () => setMirror(!state.mirror));
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '5') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+  else if ((ev.key === 'm' || ev.key === 'M') && state.stage === 5) setMirror(!state.mirror);
+});
+
+window.addEventListener('resize', requestRender);
+
+/* ---------- 起動 ---------- */
+setStage(1);
+</script>

@@ -1,0 +1,726 @@
+<title>光を近づける、つやを足す — CG第7回 実演デモ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#0E1219; --panel:#151B26; --panel2:#111722; --line:#26304A;
+    --text:#E9EDF5; --sub:#93A0B4; --faint:#5A6578;
+    --amber:#FFB45C; --cyan:#6CC6FF; --green:#46D99A; --red:#FF7B72;
+    --hl-bg:rgba(255,180,92,.13); --add-bg:rgba(70,217,154,.12);
+    --code-size:18px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+    font-size:15px; line-height:1.6;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:14px 22px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 22px;
+    background:var(--panel2);
+  }
+  h1{font-size:20px; font-weight:700; letter-spacing:.02em; white-space:nowrap}
+  h1 small{display:block; font-size:11.5px; font-weight:500; color:var(--sub); letter-spacing:.08em; margin-top:1px}
+  .steps{display:flex; gap:8px; flex-wrap:wrap}
+  .step-btn{
+    font:inherit; font-size:14.5px; font-weight:600;
+    color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:8px;
+    padding:8px 15px; cursor:pointer; white-space:nowrap;
+    transition:color .15s, border-color .15s, background .15s;
+  }
+  .step-btn:hover{color:var(--text); border-color:#3B4970}
+  .step-btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .step-btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+  .keyhint{margin-left:auto; color:var(--sub); font-size:12px; white-space:nowrap}
+  .keyhint kbd{
+    font-family:ui-monospace,Menlo,monospace; font-size:11px;
+    border:1px solid var(--line); border-bottom-width:2px; border-radius:4px;
+    padding:1px 5px; margin:0 1px; color:var(--text); background:var(--panel);
+  }
+  #note{
+    padding:9px 22px; font-size:14.5px; color:var(--amber);
+    border-bottom:1px solid var(--line); background:rgba(255,180,92,.05);
+    min-height:40px;
+  }
+  main{
+    flex:1; display:grid; grid-template-columns:minmax(430px,560px) 1fr;
+    gap:18px; padding:18px 22px 22px; align-items:start;
+  }
+  @media (max-width:980px){ main{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 14px; border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:600; letter-spacing:.12em; color:var(--sub);
+  }
+  .panel-head .dot{width:8px; height:8px; border-radius:50%; background:var(--amber)}
+
+  #left{display:flex; flex-direction:column; gap:14px}
+  #view{display:block; width:100%; aspect-ratio:1/1; cursor:crosshair; touch-action:none}
+  #readout{
+    padding:7px 14px; border-top:1px solid var(--line);
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13.5px;
+    color:var(--sub); min-height:34px; white-space:nowrap; overflow:hidden;
+  }
+  #readout b{color:var(--amber); font-weight:600}
+
+  .controls{padding:12px 14px; display:flex; flex-direction:column; gap:10px}
+  .ctl-row{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .ctl-row label{width:8.5em; font-size:13.5px; color:var(--sub); flex:none}
+  .ctl-row output{
+    width:3.4em; text-align:right; flex:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--amber);
+  }
+  input[type=range]{
+    flex:1; appearance:none; -webkit-appearance:none; height:26px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background:var(--amber); margin-top:-7px; border:none;
+  }
+  input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:#2A3550}
+  input[type=range]::-moz-range-thumb{width:18px; height:18px; border-radius:50%; background:var(--amber); border:none}
+  input[type=range]:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn{
+    font:inherit; font-size:13px; color:var(--text);
+    background:#212A3E; border:1px solid var(--line); border-radius:7px;
+    padding:6px 13px; cursor:pointer; white-space:nowrap;
+  }
+  .btn:hover{background:#2A3550}
+  .btn:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+  .btn.active{color:#141005; background:var(--amber); border-color:var(--amber)}
+
+  #code-panel .panel-head{justify-content:flex-start}
+  .font-btns{margin-left:auto; display:flex; gap:6px}
+  .font-btns button{
+    font:inherit; font-size:12px; color:var(--sub); background:transparent;
+    border:1px solid var(--line); border-radius:5px; padding:2px 9px; cursor:pointer;
+  }
+  .font-btns button:hover{color:var(--text)}
+  #code{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:var(--code-size); line-height:1.75;
+    padding:14px 0; overflow-x:auto;
+  }
+  .cl{display:flex; min-width:max-content; padding:0 18px 0 0}
+  .cl .ln{
+    flex:none; width:1.7em; text-align:right; padding-right:.6em;
+    color:#4A5570; user-select:none; font-size:.75em; line-height:inherit; padding-top:.3em;
+  }
+  .cl code{white-space:pre; flex:1}
+  .cl.hl{background:var(--hl-bg); box-shadow:inset 3px 0 0 var(--amber)}
+  .cl.add{background:var(--add-bg); box-shadow:inset 3px 0 0 var(--green); animation:pulse .9s ease-out 2}
+  @keyframes pulse{
+    0%{background:rgba(70,217,154,.38)}
+    100%{background:var(--add-bg)}
+  }
+  @media (prefers-reduced-motion:reduce){ .cl.add{animation:none} }
+  .tok-kw{color:#C792EA}
+  .tok-num{color:#F78C6C}
+  .tok-fn{color:var(--cyan)}
+  .tok-cm{color:#5F6E85}
+  .tok-cm.imp{color:var(--green); font-weight:600}
+  .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10.5px}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+  }
+</style>
+
+<header>
+  <h1>光を近づける、つやを足す<small>コンピュータグラフィックス 第7回 実演 — 点光源・減衰・鏡面反射</small></h1>
+  <nav class="steps" id="steps" aria-label="実演ステップ"></nav>
+  <div class="keyhint"><kbd>1</kbd>–<kbd>5</kbd> / <kbd>←</kbd><kbd>→</kbd> で切替</div>
+</header>
+
+<div id="note" role="status"></div>
+
+<main>
+  <div id="left">
+    <section class="panel">
+      <div class="panel-head"><span class="dot"></span>実行結果</div>
+      <canvas id="view" width="520" height="520"></canvas>
+      <div id="readout"></div>
+    </section>
+
+    <section class="panel" id="dir-panel">
+      <div class="panel-head"><span class="dot"></span>光の向き(平行光源・第1回と同じ)</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="sdx">左右(lx)</label>
+          <input type="range" id="sdx" min="-2" max="2" step="0.05" value="1">
+          <output id="odx">1.00</output>
+        </div>
+        <div class="ctl-row">
+          <label for="sdy">上下(ly)</label>
+          <input type="range" id="sdy" min="-2" max="2" step="0.05" value="1">
+          <output id="ody">1.00</output>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="lamp-panel">
+      <div class="panel-head"><span class="dot"></span>ランプと材質のコントロール</div>
+      <div class="controls">
+        <div class="ctl-row">
+          <label for="spx">ランプ 左右(x)</label>
+          <input type="range" id="spx" min="-1.7" max="1.7" step="0.05" value="1.2">
+          <output id="opx">1.20</output>
+        </div>
+        <div class="ctl-row">
+          <label for="spy">ランプ 上下(y)</label>
+          <input type="range" id="spy" min="-1.7" max="1.7" step="0.05" value="0.9">
+          <output id="opy">0.90</output>
+        </div>
+        <div class="ctl-row hidden" id="k-row">
+          <label for="sk">減衰の強さ k</label>
+          <input type="range" id="sk" min="0" max="2" step="0.05" value="0.8">
+          <output id="ok">0.80</output>
+        </div>
+        <div class="ctl-row hidden" id="n-row">
+          <label for="sn">つやの鋭さ n</label>
+          <input type="range" id="sn" min="4" max="256" step="2" value="64">
+          <output id="on">64</output>
+        </div>
+        <div class="ctl-row hidden" id="preset-row">
+          <button class="btn preset" data-p="gypsum">石膏(拡散のみ)</button>
+          <button class="btn preset active" data-p="plastic">プラスチック</button>
+          <button class="btn preset" data-p="metal">金属風</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="code-panel">
+    <div class="panel-head">
+      <span class="dot" style="background:var(--green)"></span>コード — ピクセルごとに実行される関数
+      <div class="font-btns">
+        <button id="font-minus" aria-label="文字を小さく">A−</button>
+        <button id="font-plus" aria-label="文字を大きく">A+</button>
+      </div>
+    </div>
+    <div id="code"></div>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ---------- 状態 ---------- */
+const state = {
+  stage: 1,
+  dlx: 1, dly: 1,        // ①平行光源の向き
+  px: 1.2, py: 0.9,      // ②〜ランプの位置(z は LZ で固定)
+  k: 0.8,                // ③減衰の強さ
+  n: 64,                 // ④つやの鋭さ
+  kd: 0.85, ks: 0.90,    // ⑤材質の係数(プリセットで切替)
+  preset: 'plastic',
+  hover: null,           // {x, y}(球面ワールド座標)
+  fontIdx: 1,
+};
+const FONT_SIZES = [15, 18, 21, 24];
+const LZ = 1.1;          // ランプの奥行き(手前に固定)
+
+const STAGES = [
+  { label:'① 平行光源(復習)', note:'第1回の式そのまま:明るさ = max(0, N·L̂)。光は太陽のように遠く、矢印 L̂ は全ピクセル共通——正規化はループの外で1回だけ。ここから光を「近づけて」いきます。' },
+  { label:'② 点光源', note:'光が「位置」を持つと、ランプへ向かう矢印は点ごとに違う。第1回の正規化を、今度は毎ピクセルやる。スライダーでランプを動かすと、明るい場所が追いかけてくる。' },
+  { label:'③ 距離減衰', note:'遠いほど光は弱い:明るさ ×= 1/(1 + k·r²)。k を上げてから、ランプを球に近づけたり離したり——距離の効果が目に見える。' },
+  { label:'④ つや(鏡面反射)', note:'光 L と視線 V のちょうど中間の矢印 H を作り、面が H を向いた所だけ白く光らせる(ブリン・フォン)。n を上げるほどハイライトは小さく・鋭く。' },
+  { label:'⑤ 材質で遊ぶ', note:'材質とは、係数の組(kd, ks, n)のこと。ボタンひとつで石膏・プラスチック・金属風。70年代のCGがプラスチックだらけだったのは、この式で計算できる質感だったから。' },
+];
+
+const PRESETS = {
+  gypsum:  { label:'石膏',        kd:1.00, ks:0.00, n:16  },
+  plastic: { label:'プラスチック', kd:0.85, ks:0.90, n:160 },
+  metal:   { label:'金属風',      kd:0.30, ks:1.30, n:48  },
+};
+
+// ステージごとの実効係数(表示コードと同じ値になる)
+function material() {
+  const s = state.stage;
+  if (s >= 5) return { kd: state.kd, ks: state.ks, n: state.n };
+  if (s === 4) return { kd: 1, ks: 0.9, n: state.n };
+  return { kd: 1, ks: 0, n: state.n };
+}
+
+/* ---------- 球のレンダリング(ソフトウェア) ---------- */
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const RES = 520;
+const img = vctx.createImageData(RES, RES);
+const BASE = [248, 216, 190];
+const WORLD = 1.85;                  // 描画範囲。ランプが球のまわりを動ける広さ
+const U = RES / (2 * WORLD), CX = RES / 2, CY = RES / 2;
+
+function dirLight() {
+  const len = Math.hypot(state.dlx, state.dly, 1) || 1;
+  return [state.dlx / len, state.dly / len, 1 / len];
+}
+
+function render() {
+  const s = state.stage;
+  const { kd, ks, n } = material();
+  const [dlx, dly, dlz] = dirLight();
+  const Px = state.px, Py = state.py, Pz = LZ, k = state.k;
+  const data = img.data;
+  let i = 0;
+  for (let py = 0; py < RES; py++) {
+    const y = (CY - (py + 0.5)) / U;
+    for (let px = 0; px < RES; px++, i += 4) {
+      const x = ((px + 0.5) - CX) / U;
+      const r2 = x * x + y * y;
+      // 輪郭のアンチエイリアス被覆率
+      const cov = Math.max(0, Math.min(1, (1 - Math.sqrt(r2)) * U + 0.5));
+      if (cov <= 0) {
+        data[i] = 255; data[i + 1] = 255; data[i + 2] = 255; data[i + 3] = 255;
+        continue;
+      }
+      const rr = Math.min(r2, 0.999999);
+      const nx = x, ny = y, nz = Math.sqrt(1 - rr);   // 単位球:表面の点 = 法線
+      let lx, ly, lz, att = 1;
+      if (s === 1) {
+        lx = dlx; ly = dly; lz = dlz;                 // 全ピクセル共通(平行光源)
+      } else {
+        lx = Px - x; ly = Py - y; lz = Pz - nz;       // ランプへ向かう矢印(毎ピクセル)
+        const r = Math.sqrt(lx * lx + ly * ly + lz * lz) || 1;
+        lx /= r; ly /= r; lz /= r;                    // 正規化がループの中へ
+        if (s >= 3) att = 1 / (1 + k * r * r);        // 距離減衰
+      }
+      const d = Math.max(0, nx * lx + ny * ly + nz * lz);
+      let sp = 0;
+      if (s >= 4 && d > 0 && ks > 0) {                // つや(ブリン・フォン)
+        let hx = lx, hy = ly, hz = lz + 1;            // H = L + V, V = (0,0,1)
+        const h = Math.sqrt(hx * hx + hy * hy + hz * hz) || 1;
+        hx /= h; hy /= h; hz /= h;
+        sp = Math.pow(Math.max(0, nx * hx + ny * hy + nz * hz), n) * ks * att;
+      }
+      const lit = kd * d * att;
+      const R = Math.min(255, BASE[0] * lit + 255 * sp);
+      const G = Math.min(255, BASE[1] * lit + 255 * sp);
+      const B = Math.min(255, BASE[2] * lit + 255 * sp);
+      data[i]     = R * cov + 255 * (1 - cov);
+      data[i + 1] = G * cov + 255 * (1 - cov);
+      data[i + 2] = B * cov + 255 * (1 - cov);
+      data[i + 3] = 255;
+    }
+  }
+  vctx.putImageData(img, 0, 0);
+  drawOverlay();
+}
+
+/* ---------- ホバー点の値(レンダリングと同じ計算) ---------- */
+function shadeAt(x, y) {
+  const r2 = x * x + y * y;
+  if (r2 > 1) return null;
+  const nz = Math.sqrt(1 - Math.min(r2, 0.999999));
+  const nx = x, ny = y;
+  const s = state.stage, { n } = material(), k = state.k;
+  let lx, ly, lz, att = 1, r = 0;
+  if (s === 1) {
+    [lx, ly, lz] = dirLight();
+  } else {
+    lx = state.px - x; ly = state.py - y; lz = LZ - nz;
+    r = Math.sqrt(lx * lx + ly * ly + lz * lz) || 1;
+    lx /= r; ly /= r; lz /= r;
+    if (s >= 3) att = 1 / (1 + k * r * r);
+  }
+  const c = Math.max(-1, Math.min(1, nx * lx + ny * ly + nz * lz));
+  const d = Math.max(0, c);
+  let pw = 0;
+  if (s >= 4 && d > 0) {
+    let hx = lx, hy = ly, hz = lz + 1;
+    const h = Math.sqrt(hx * hx + hy * hy + hz * hz) || 1;
+    pw = Math.pow(Math.max(0, (nx * hx + ny * hy + nz * hz) / h), n);
+  }
+  return { d, r, att, pw, theta: Math.round(Math.acos(c) * 180 / Math.PI) };
+}
+
+/* ---------- 図解(矢印・ランプ) ---------- */
+function drawArrow(ctx, x0, y0, x1, y1, head) {
+  const a = Math.atan2(y1 - y0, x1 - x0);
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - head * Math.cos(a - 0.45), y1 - head * Math.sin(a - 0.45));
+  ctx.lineTo(x1 - head * Math.cos(a + 0.45), y1 - head * Math.sin(a + 0.45));
+  ctx.closePath(); ctx.fill();
+}
+function haloArrow(ctx, x0, y0, x1, y1, head, color, width) {
+  ctx.strokeStyle = ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.lineWidth = width + 3.5;
+  drawArrow(ctx, x0, y0, x1, y1, head + 3);
+  ctx.strokeStyle = ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  drawArrow(ctx, x0, y0, x1, y1, head);
+}
+function haloText(ctx, text, x, y, color) {
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(255,255,255,.9)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+function lampIcon(ctx, x, y) {
+  ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#FFB45C';
+  ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#E0821F'; ctx.lineWidth = 2;
+  for (let a = 0; a < 8; a++) {
+    const b = a * Math.PI / 4;
+    ctx.beginPath();
+    ctx.moveTo(x + 12 * Math.cos(b), y + 12 * Math.sin(b));
+    ctx.lineTo(x + 17 * Math.cos(b), y + 17 * Math.sin(b));
+    ctx.stroke();
+  }
+}
+
+function drawOverlay() {
+  const ctx = vctx;
+  const s = state.stage;
+  if (s === 1) {
+    // 平行な光:同じ向きの矢印が3本、そろって届く
+    const [lx, ly] = dirLight();
+    const m = Math.hypot(lx, ly);
+    if (m > 0.05) {
+      const ux = lx / m, uy = -ly / m;    // 画面上の「光のある方向」
+      for (const o of [-0.5, 0, 0.5]) {
+        const ox = -uy * o, oy = ux * o;
+        haloArrow(ctx,
+          CX + (ux * 1.62 + ox) * U, CY + (uy * 1.62 + oy) * U,
+          CX + (ux * 1.15 + ox) * U, CY + (uy * 1.15 + oy) * U,
+          10, '#2B7FD4', 2.6);
+      }
+      ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+      const tx = Math.max(70, Math.min(RES - 70, CX + ux * 1.4 * U));
+      const ty = Math.max(20, Math.min(RES - 10, CY + uy * 1.4 * U + (uy > 0 ? 30 : -22)));
+      haloText(ctx, '平行な光(向きだけ・位置は無い)', tx, ty, '#2B7FD4');
+    }
+    if (state.hover) {
+      const hx = CX + state.hover.x * U, hy = CY - state.hover.y * U;
+      if (m > 0.05) {
+        haloArrow(ctx, hx, hy, hx + lx / m * 0.5 * U, hy - ly / m * 0.5 * U, 9, '#2B7FD4', 2.2);
+      }
+    }
+  } else {
+    const sx = CX + state.px * U, sy = CY - state.py * U;
+    if (state.hover) {
+      const hx = CX + state.hover.x * U, hy = CY - state.hover.y * U;
+      haloArrow(ctx, hx, hy, sx, sy, 10, '#2B7FD4', 2.4);
+      const sh = shadeAt(state.hover.x, state.hover.y);
+      if (sh) {
+        ctx.font = '13px ui-monospace, Menlo, monospace'; ctx.textAlign = 'center';
+        haloText(ctx, 'r = ' + sh.r.toFixed(2), (hx + sx) / 2 + 16, (hy + sy) / 2 - 8, '#2B7FD4');
+      }
+    }
+    lampIcon(ctx, sx, sy);
+  }
+  if (state.hover) {
+    const hx = CX + state.hover.x * U, hy = CY - state.hover.y * U;
+    vctx.strokeStyle = '#E0821F';
+    vctx.lineWidth = 2;
+    vctx.beginPath(); vctx.arc(hx, hy, 9, 0, Math.PI * 2); vctx.stroke();
+  }
+}
+
+/* ---------- コード表示 ---------- */
+const codeEl = document.getElementById('code');
+const fmt = v => (v >= 0 ? ' ' : '') + v.toFixed(2);
+let dynEls = {};
+
+function dirLineText() {
+  return `let lx = ${fmt(state.dlx)}, ly = ${fmt(state.dly)}, lz = 1;   // ← スライダー(光の向き)`;
+}
+function lampLineText() {
+  return `const 光 = { x: ${fmt(state.px)}, y: ${fmt(state.py)}, z: 1.1 };  // ← スライダー(ランプ)`;
+}
+function kLineText() {
+  return `  const 減衰 = 1 / (1 + ${state.k.toFixed(2)} * r * r);   // ← スライダー k`;
+}
+function nLineText() {
+  return `  const つや = (d > 0) ? Math.pow(Math.max(0, nx*hx + ny*hy + nz*hz), ${state.n}) : 0;`;
+}
+function matLineText() {
+  return `const kd = ${state.kd.toFixed(2)}, ks = ${state.ks.toFixed(2)}, n = ${state.n};  // ← プリセット`;
+}
+
+function codeLines() {
+  const s = state.stage;
+  const L = [];
+  const add = (t, k) => L.push({ t, k: k || '' });
+
+  if (s === 1) {
+    add('// 平行光源(第1回の復習):光の向きは、どの点でも同じ');
+    add(dirLineText(), 'dyn dynd');
+    add('const len = Math.sqrt(lx*lx + ly*ly + lz*lz);');
+    add('lx /= len;  ly /= len;  lz /= len;   // 正規化は、ループの外で1回だけ', 'hl');
+    add('');
+    add('function 明るさ(nx, ny, nz) {        // ピクセル(小さな面)ごと');
+    add('  const d = Math.max(0, nx*lx + ny*ly + nz*lz);   // 内積 = cosθ');
+    add('  return 素の色 * d;');
+    add('}');
+    return L;
+  }
+
+  add('// 点光源:光が「位置」を持つ。光の向きは、点ごとに違う');
+  add(lampLineText(), (s === 2 ? 'add ' : '') + 'dyn dynl');
+  if (s >= 5) {
+    add('// ★ 材質 = 係数の組。ここを変えるだけで質感が変わる', s === 5 ? 'add' : '');
+    add(matLineText(), (s === 5 ? 'add ' : '') + 'dyn dynm');
+  }
+  add('');
+  add('function 明るさ(x, y, z, nx, ny, nz) {   // 表面の点 (x,y,z) も使う', s === 2 ? 'add' : '');
+  add('  // ★ この点からランプへ向かう矢印 L を、毎ピクセル作る', s === 2 ? 'add' : '');
+  add('  let lx = 光.x - x,  ly = 光.y - y,  lz = 光.z - z;', s === 2 ? 'add' : '');
+  add('  const r = Math.sqrt(lx*lx + ly*ly + lz*lz);   // ランプまでの距離', s === 2 ? 'add' : '');
+  add('  lx /= r;  ly /= r;  lz /= r;   // ★ 第1回の正規化を、今度は毎ピクセル', s === 2 ? 'add hl' : '');
+  add('  const d = Math.max(0, nx*lx + ny*ly + nz*lz);   // 拡散(第1回の式)');
+  if (s >= 3) {
+    add('');
+    add('  // ★ 距離減衰:遠いほど弱い(r が2倍 → 約1/4)', s === 3 ? 'add' : '');
+    add(kLineText(), (s === 3 ? 'add ' : '') + 'dyn dynk');
+  }
+  if (s >= 4) {
+    add('');
+    add('  // ★ つや:光 L と視線 V=(0,0,1) の中間の矢印 H(ブリン・フォン)', s === 4 ? 'add' : '');
+    add('  let hx = lx,  hy = ly,  hz = lz + 1;          // H = L + V', s === 4 ? 'add' : '');
+    add('  const h = Math.sqrt(hx*hx + hy*hy + hz*hz);', s === 4 ? 'add' : '');
+    add('  hx /= h;  hy /= h;  hz /= h;                  // また正規化!', s === 4 ? 'add' : '');
+    if (s === 4) add(nLineText(), 'add dyn dynn');
+    else add('  const つや = (d > 0) ? Math.pow(Math.max(0, nx*hx + ny*hy + nz*hz), n) : 0;');
+  }
+  add('');
+  if (s === 2)      add('  return 素の色 * d;');
+  else if (s === 3) add('  return 素の色 * d * 減衰;', 'hl');
+  else if (s === 4) add('  return 素の色 * d * 減衰 + 白 * 0.9 * つや * 減衰;', 'add');
+  else              add('  return 素の色 * kd * d * 減衰 + 白 * ks * つや * 減衰;', 'add');
+  add('}');
+  return L;
+}
+
+function esc(t) {
+  return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function highlightJS(line) {
+  const ci = line.indexOf('//');
+  let code = ci >= 0 ? line.slice(0, ci) : line;
+  let com = ci >= 0 ? line.slice(ci) : '';
+  code = esc(code).replace(
+    /\b(function|let|const|return|if|else)\b|\b(Math\.\w+)\b|(\d+\.?\d*)/g,
+    (m, kw, fn, num) => kw ? `<span class="tok-kw">${kw}</span>`
+      : fn ? `<span class="tok-fn">${fn}</span>`
+      : `<span class="tok-num">${num}</span>`
+  );
+  if (com) {
+    const imp = com.includes('★') ? ' imp' : '';
+    com = `<span class="tok-cm${imp}">${esc(com)}</span>`;
+  }
+  return code + com;
+}
+
+function buildCode() {
+  const lines = codeLines();
+  codeEl.innerHTML = lines.map((l, i) =>
+    `<div class="cl ${l.k}"><span class="ln">${i + 1}</span><code>${highlightJS(l.t) || ' '}</code></div>`
+  ).join('');
+  dynEls = {};
+  for (const c of ['dynd', 'dynl', 'dynk', 'dynn', 'dynm']) {
+    dynEls[c] = codeEl.querySelector('.cl.' + c + ' code');
+  }
+}
+
+// スライダー操作中は該当行だけ書き換える(全再構築だと add の点滅が再発火するため)
+function updateDyn(cls, text) {
+  if (dynEls[cls]) dynEls[cls].innerHTML = highlightJS(text);
+}
+
+/* ---------- 読み出し ---------- */
+const readout = document.getElementById('readout');
+
+function updateReadout() {
+  const s = state.stage;
+  const h = state.hover ? shadeAt(state.hover.x, state.hover.y) : null;
+  if (s === 1) {
+    readout.innerHTML = h
+      ? `θ = <b>${h.theta}°</b> 、 cosθ = <b>${h.d.toFixed(2)}</b>。どの点も、同じ矢印 L̂ で計算している。`
+      : '第1回の式そのまま。球にマウスを乗せると、その点の cosθ が出ます。';
+  } else if (s === 2) {
+    readout.innerHTML = h
+      ? `ランプまでの距離 r = <b>${h.r.toFixed(2)}</b> 、 cosθ = <b>${h.d.toFixed(2)}</b>。矢印 L は点ごとに違う。`
+      : 'ランプを球に近づけてみて。明るい場所が、ランプを追いかける。';
+  } else if (s === 3) {
+    readout.innerHTML = h
+      ? `r = <b>${h.r.toFixed(2)}</b> → 減衰 1/(1+k·r²) = <b>${h.att.toFixed(2)}</b> → 明るさ <b>${(h.d * h.att).toFixed(2)}</b>`
+      : `k = <b>${state.k.toFixed(2)}</b>。ランプに近い所だけが明るい。k = 0 にすると②に戻る。`;
+  } else if (s === 4) {
+    readout.innerHTML = h
+      ? `拡散 = <b>${(h.d * h.att).toFixed(2)}</b> / つや(N·H の ${material().n} 乗)= <b>${h.pw.toFixed(2)}</b>`
+      : `n = <b>${state.n}</b>。n を上げるほど、ハイライトは小さく・鋭くなる。`;
+  } else {
+    const m = material();
+    const name = state.preset === 'custom' ? 'カスタム' : PRESETS[state.preset].label;
+    readout.innerHTML = `材質 = <b>${name}</b>(kd=${m.kd.toFixed(2)}, ks=${m.ks.toFixed(2)}, n=${m.n})`
+      + (h ? ` / この点:拡散 <b>${(m.kd * h.d * h.att).toFixed(2)}</b>, つや <b>${(m.ks * h.pw * h.att).toFixed(2)}</b>` : '');
+  }
+}
+
+/* ---------- ステージ切替 ---------- */
+const stepsEl = document.getElementById('steps');
+const noteEl = document.getElementById('note');
+
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'step-btn';
+  b.textContent = s.label;
+  b.addEventListener('click', () => setStage(i + 1));
+  stepsEl.appendChild(b);
+});
+
+function setStage(n) {
+  state.stage = Math.max(1, Math.min(5, n));
+  const s = state.stage;
+  [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i + 1 === s));
+  noteEl.textContent = STAGES[s - 1].note;
+  document.getElementById('dir-panel').classList.toggle('hidden', s !== 1);
+  document.getElementById('lamp-panel').classList.toggle('hidden', s < 2);
+  document.getElementById('k-row').classList.toggle('hidden', s < 3);
+  document.getElementById('n-row').classList.toggle('hidden', s < 4);
+  document.getElementById('preset-row').classList.toggle('hidden', s < 5);
+  if (s === 5 && state.preset !== 'custom') applyPreset(state.preset);
+  buildCode();
+  updateReadout();
+  requestRender();
+}
+
+/* ---------- 材質プリセット ---------- */
+const snEl = document.getElementById('sn'), onEl = document.getElementById('on');
+
+function applyPreset(p) {
+  const m = PRESETS[p];
+  state.preset = p;
+  state.kd = m.kd; state.ks = m.ks; state.n = m.n;
+  snEl.value = m.n; onEl.value = String(m.n);
+  document.querySelectorAll('.btn.preset').forEach(b =>
+    b.classList.toggle('active', b.dataset.p === p));
+}
+document.querySelectorAll('.btn.preset').forEach(b => {
+  b.addEventListener('click', () => {
+    applyPreset(b.dataset.p);
+    updateDyn('dynm', matLineText());
+    updateReadout();
+    requestRender();
+  });
+});
+
+/* ---------- 再描画(フレーム間引き) ---------- */
+let pending = false;
+function requestRender() {
+  if (pending) return;
+  pending = true;
+  requestAnimationFrame(() => {
+    pending = false;
+    render();
+  });
+}
+
+/* ---------- スライダー ---------- */
+const sdx = document.getElementById('sdx'), sdy = document.getElementById('sdy');
+const odx = document.getElementById('odx'), ody = document.getElementById('ody');
+sdx.addEventListener('input', () => {
+  state.dlx = parseFloat(sdx.value); odx.value = state.dlx.toFixed(2);
+  updateDyn('dynd', dirLineText()); updateReadout(); requestRender();
+});
+sdy.addEventListener('input', () => {
+  state.dly = parseFloat(sdy.value); ody.value = state.dly.toFixed(2);
+  updateDyn('dynd', dirLineText()); updateReadout(); requestRender();
+});
+
+const spx = document.getElementById('spx'), spy = document.getElementById('spy');
+const opx = document.getElementById('opx'), opy = document.getElementById('opy');
+spx.addEventListener('input', () => {
+  state.px = parseFloat(spx.value); opx.value = state.px.toFixed(2);
+  updateDyn('dynl', lampLineText()); updateReadout(); requestRender();
+});
+spy.addEventListener('input', () => {
+  state.py = parseFloat(spy.value); opy.value = state.py.toFixed(2);
+  updateDyn('dynl', lampLineText()); updateReadout(); requestRender();
+});
+
+const sk = document.getElementById('sk'), okEl = document.getElementById('ok');
+sk.addEventListener('input', () => {
+  state.k = parseFloat(sk.value); okEl.value = state.k.toFixed(2);
+  updateDyn('dynk', kLineText()); updateReadout(); requestRender();
+});
+
+snEl.addEventListener('input', () => {
+  state.n = parseInt(snEl.value, 10); onEl.value = String(state.n);
+  if (state.stage === 5) {
+    // プリセットから外れて「カスタム」に
+    state.preset = 'custom';
+    document.querySelectorAll('.btn.preset').forEach(b => b.classList.remove('active'));
+    updateDyn('dynm', matLineText());
+  }
+  updateDyn('dynn', nLineText());
+  updateReadout(); requestRender();
+});
+
+/* ---------- マウス:ホバー ---------- */
+function toWorld(ev) {
+  const r = view.getBoundingClientRect();
+  const px = (ev.clientX - r.left) / r.width * RES;
+  const py = (ev.clientY - r.top) / r.height * RES;
+  return { x: (px - CX) / U, y: (CY - py) / U };
+}
+view.addEventListener('pointermove', ev => {
+  const w = toWorld(ev);
+  state.hover = (w.x * w.x + w.y * w.y <= 1) ? w : null;
+  updateReadout();
+  requestRender();
+});
+view.addEventListener('pointerleave', () => {
+  state.hover = null;
+  updateReadout();
+  requestRender();
+});
+
+/* ---------- コード文字サイズ ---------- */
+function setFont(i) {
+  state.fontIdx = Math.max(0, Math.min(FONT_SIZES.length - 1, i));
+  document.documentElement.style.setProperty('--code-size', FONT_SIZES[state.fontIdx] + 'px');
+}
+document.getElementById('font-plus').addEventListener('click', () => setFont(state.fontIdx + 1));
+document.getElementById('font-minus').addEventListener('click', () => setFont(state.fontIdx - 1));
+
+/* ---------- キーボード ---------- */
+window.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'INPUT') return;
+  if (ev.key >= '1' && ev.key <= '5') setStage(+ev.key);
+  else if (ev.key === 'ArrowRight') setStage(state.stage + 1);
+  else if (ev.key === 'ArrowLeft') setStage(state.stage - 1);
+});
+
+window.addEventListener('resize', requestRender);
+
+/* ---------- 起動 ---------- */
+setStage(1);
+</script>
