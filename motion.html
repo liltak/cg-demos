@@ -104,7 +104,7 @@
 
   /* 数式パネル:ステージごとに式が1行ずつ積み上がる */
   #math{padding:8px 0; display:flex; flex-direction:column}
-  .mrow{display:flex; align-items:baseline; gap:12px; padding:6px 16px; flex-wrap:wrap}
+  .mrow{display:flex; align-items:baseline; gap:12px; padding:6px 16px; flex-wrap:wrap; overflow-x:auto}
   .mrow .chip{flex:none; width:11em; font-size:12.5px; color:var(--sub)}
   .mrow .mf{
     font-family:"STIX Two Math","Cambria Math",Georgia,"Times New Roman",serif;
@@ -152,6 +152,24 @@
   .tok-cm{color:#5F6E85}
   .tok-cm.imp{color:var(--green); font-weight:600}
   .hidden{display:none !important}
+
+  /* スマホ向け調整 */
+  @media (max-width:700px){
+    :root{--code-size:14px}
+    header{padding:10px 12px; gap:8px 12px}
+    h1{font-size:16px; white-space:normal}
+    h1 small{font-size:10px; white-space:normal}
+    .keyhint{display:none}
+    .step-btn{padding:6px 10px; font-size:12.5px}
+    #note{padding:7px 12px; font-size:12.5px; min-height:0}
+    main{padding:10px; gap:12px}
+    #readout{white-space:normal; font-size:12px; line-height:1.5}
+    .ctl-row label{width:auto; min-width:6em; font-size:12.5px}
+    .mrow{gap:6px; padding:5px 12px}
+    .mrow .chip{width:100%; font-size:11.5px}
+    .mrow .mf{font-size:14.5px}
+    .mrow .mf .note{font-size:11px}
+  }
 </style>
 
 <header>
